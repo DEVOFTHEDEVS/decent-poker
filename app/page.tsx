@@ -133,6 +133,20 @@ function useWS(url: string) {
       ws.current = s;
       s.onopen = () => {
         setConnected(true); setError(null);
+
+        // Check for room invite first (highest priority)
+        const joinRoomId = typeof sessionStorage!=="undefined" ? sessionStorage.getItem("join_room_id") : null;
+        const joinRoomName = typeof sessionStorage!=="undefined" ? sessionStorage.getItem("join_room_name") : null;
+        if (joinRoomId && joinRoomName) {
+          sessionStorage.removeItem("join_room_id");
+          sessionStorage.removeItem("join_room_name");
+          const joinSeed = typeof sessionStorage!=="undefined" ? (sessionStorage.getItem("player_seed") || genSeed()) : genSeed();
+          sessionStorage.setItem("player_seed", joinSeed);
+          s.send(JSON.stringify({ type:"join_room", roomId:joinRoomId, name:joinRoomName, playerSeed:joinSeed }));
+          return;
+        }
+
+        // Try to rejoin previous session
         const prevTableId = typeof sessionStorage!=="undefined" ? sessionStorage.getItem("current_table_id") : null;
         const prevSeed = typeof sessionStorage!=="undefined" ? sessionStorage.getItem("player_seed") : null;
         if (prevTableId && prevSeed) {
@@ -611,16 +625,7 @@ export default function App() {
 
   useEffect(() => { if (table) setView("table"); }, [!!table]);
 
-  useEffect(() => {
-    if (!connected) return;
-    const rid = typeof sessionStorage!=="undefined" ? sessionStorage.getItem("join_room_id") : null;
-    const rname = typeof sessionStorage!=="undefined" ? sessionStorage.getItem("join_room_name") : null;
-    if (rid && rname) {
-      sessionStorage.removeItem("join_room_id");
-      sessionStorage.removeItem("join_room_name");
-      send({ type:"join_room", roomId:rid, name:rname, playerSeed:seed });
-    }
-  }, [connected]);
+  // join_room is handled in onopen above
 
   function handlePractice() {
     sessionStorage.setItem("player_seed", seed);

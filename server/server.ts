@@ -227,7 +227,7 @@ export class PokerServer {
       case "join_room": {
         const { roomId: jrId, name: jrName, playerSeed: jrSeed } = msg;
         const roomInfo = this.dynamicRooms.get(jrId);
-        if (!roomInfo) { this.send(client.ws, { type: "error", message: "Room not found — it may have expired" }); return; }
+        if (!roomInfo) { this.send(client.ws, { type: "error", message: "Room not found — ask the host to share a new link, or the server may have restarted." }); return; }
         const jrTable = this.tables.get(roomInfo.tableId);
         if (!jrTable) { this.send(client.ws, { type: "error", message: "Room expired" }); return; }
         const playerId = `room_${jrSeed.slice(0, 12)}`;
