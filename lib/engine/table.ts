@@ -817,15 +817,17 @@ export class PokerTable {
 
     this.emit();
 
-    // Remove busted players (must have less than 1 BB to be removed)
+    // Handle busted players
     setTimeout(() => {
       for (const seat of this.seats) {
-        if (seat && !seat.isBot && seat.chips < this.cfg.bb) {
-          this.onKick?.(seat.id, "chips");
-          this.leave(seat.id);
-        } else if (seat && seat.isBot && seat.chips < this.cfg.bb) {
-          // Rebuy bot automatically
-          seat.chips = this.cfg.minBuyIn * 3;
+        if (!seat) continue;
+        if (seat.chips <= 0) {
+          if (seat.isBot) {
+            // Rebuy bot automatically
+            seat.chips = this.cfg.minBuyIn * 3;
+          }
+          // Human players with 0 chips just sit out - they can rebuy manually
+          // Never auto-kick humans
         }
       }
       this.resetHand();
