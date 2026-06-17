@@ -30,7 +30,7 @@ export class PokerServer {
   private wss: WebSocketServer;
   private tables: Map<string, PokerTable>;
   private clients: Map<WebSocket, ConnectedClient>;
-  private dynamicRooms: Map<string, { tableId: string; createdAt: number }>; // roomId → tableId
+  private dynamicRooms: Map<string, { tableId: string; createdAt: number; startingChips: number }>; // roomId → tableId
   private disconnectTimers: Map<string, ReturnType<typeof setTimeout>>; // playerId → timer
   private pingInterval: ReturnType<typeof setInterval>;
 
@@ -221,7 +221,7 @@ export class PokerServer {
         client.playerId = playerId;
         client.tableId = ptid;
         client.isSpectator = false;
-        const PRACTICE_CHIPS = 1_000_000_000_000; // 1000 "chips" in lamports (display as chips not SOL)
+        const PRACTICE_CHIPS = 1000; // 1000 chips (1 chip = 1 lamport encoding)
         const ok = ptable.sitDown(playerId, pname || "Player", PRACTICE_CHIPS, pseed);
         if (!ok) { this.send(client.ws, { type: "error", message: "Table full" }); return; }
         this.send(client.ws, { type: "joined", table: ptable.getClientState(playerId) });
@@ -230,13 +230,16 @@ export class PokerServer {
 
       case "create_room": {
         const { name: crName, playerSeed: crSeed, sb: crSb, bb: crBb, maxPlayers: crMax, roomName: crRoomName, chips: crChips } = msg as any;
+        const startChips = crChips || 1000; // default 1000 chips
         const { roomId, table: crTable } = this.createRoom(crSb || 10_000_000, crBb || 20_000_000, crMax || 6, crRoomName);
+        // Store starting chips on the room record so joiners get the same amount
+        const roomRecord = this.dynamicRooms.get(roomId);
+        if (roomRecord) roomRecord.startingChips = startChips;
         const playerId = `room_${crSeed.slice(0, 12)}`;
         client.playerId = playerId;
         client.tableId = crTable["cfg"].id;
         client.isSpectator = false;
-        const ROOM_CHIPS = crChips || 1_000_000_000_000; // use custom chips or default 1000
-        crTable.sitDown(playerId, crName || "Host", ROOM_CHIPS, crSeed);
+        crTable.sitDown(playerId, crName || "Host", startChips, crSeed);
         const roomUrl = `/table/${roomId}`;
         this.send(client.ws, { type: "room_created", roomId, url: roomUrl, table: crTable.getClientState(playerId) });
         break;
@@ -258,7 +261,7 @@ export class PokerServer {
         client.tableId = roomInfo.tableId;
         client.isSpectator = false;
         const ROOM_CHIPS = 1_000_000_000_000;
-        const tableChips = jrChips || (jrTable as any).cfg?.minBuyIn * 50 || 1_000_000_000_000;
+        const tableChips = roomInfo.startingChips || jrChips || 1000;
         const ok = jrTable.sitDown(playerId, jrName || "Player", tableChips, jrSeed);
         if (!ok) { this.send(client.ws, { type: "error", message: "Room is full" }); return; }
         this.send(client.ws, { type: "joined", table: jrTable.getClientState(playerId) });
@@ -388,7 +391,7 @@ export class PokerServer {
     const table = new PokerTable(cfg);
     table.onStateChange = (t: any) => this.broadcastTableState(t);
     this.tables.set(tableId, table);
-    this.dynamicRooms.set(roomId, { tableId, createdAt: Date.now() });
+    this.dynamicRooms.set(roomId, { tableId, createdAt: Date.now(), startingChips: 1000 });
     // Clean up empty rooms after 2 hours
     setTimeout(() => {
       const info = this.dynamicRooms.get(roomId);

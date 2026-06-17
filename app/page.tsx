@@ -10,16 +10,12 @@ interface LobbyTable { id: string; name: string; seated: number; maxSeats: numbe
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const sol = (l: number) => (l / 1e9).toFixed(3);
-// Smart display: show chips if stack > 10 SOL (likely a chip game not real SOL)
-function displayAmount(l: number, forceChips = false): string {
-  if (forceChips || l > 10_000_000_000) { // > 10 SOL = chip mode
-    const chips = Math.round(l / 1_000_000); // 1 chip = 1M lamports
-    return chips >= 1000 ? chips.toLocaleString() : chips.toString();
+// Smart display: chip mode if value < 1_000_000 (1 chip = 1 lamport encoding)
+function displayAmount(l: number): string {
+  if (l > 0 && l < 1_000_000) { // chip mode: values are tiny (1-50000 range)
+    return l >= 1000 ? l.toLocaleString() : l.toString();
   }
   return (l / 1e9).toFixed(3) + ' SOL';
-}
-function isChipMode(tableOrChips: number): boolean {
-  return tableOrChips > 10_000_000_000; // if starting chips > 10 SOL equiv = chip game
 }
 const SUIT_COLOR: Record<string, string> = { "♥":"#dc2626","♦":"#dc2626","♠":"#1e293b","♣":"#1e293b" };
 function genSeed() { const a = new Uint8Array(16); if (typeof crypto!=="undefined") crypto.getRandomValues(a); return Array.from(a).map(b=>b.toString(16).padStart(2,"0")).join(""); }
@@ -460,10 +456,12 @@ function RoomSettings({ onConfirm, onCancel, playerName }: { onConfirm:(s:any)=>
   const [maxPlayers, setMaxPlayers] = useState('6');
   const [roomName, setRoomName] = useState(`${playerName}'s Table`);
 
-  // Convert display values to lamports (we use lamports internally, 1 chip = 1M lamports)
+  // Convert display values to lamports
+  // chips: 1 chip = 1 lamport (keeps numbers small and readable)
+  // sol: 1 SOL = 1_000_000_000 lamports
   function toInternal(val: string) {
     const n = parseFloat(val) || 0;
-    return currency === 'sol' ? Math.round(n * 1e9) : Math.round(n * 1_000_000);
+    return currency === 'sol' ? Math.round(n * 1e9) : Math.round(n); // chips stored 1:1
   }
 
   const presetBlinds = currency === 'chips'
