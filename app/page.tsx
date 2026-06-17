@@ -150,7 +150,7 @@ function SeatPod({ seat, isMe, isWinner, winCards, bb, pos }: { seat: Seat; isMe
       {seat.bet > 0 && (
         <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1}}>
           <div style={{display:"flex",gap:2}}>{Array.from({length:Math.min(5,Math.max(1,Math.ceil(seat.bet/(bb*5))))}).map((_,i)=><div key={i} style={{width:8,height:8,borderRadius:"50%",background:"linear-gradient(#facc15,#ca8a04)",border:"1px solid #fde68a"}}/>)}</div>
-          <span style={{fontSize:9,color:"#fde68a",fontFamily:"monospace"}}>{sol(seat.bet)}</span>
+          <span style={{fontSize:8,color:"#fde68a",fontFamily:"monospace"}}>{sol(seat.bet)}</span>
         </div>
       )}
       {showAction && <div style={{padding:"2px 6px",borderRadius:3,background:aC[seat.lastAction!.label]||"#374151",color:"#fff",fontSize:9,fontWeight:700}}>{seat.lastAction!.label}</div>}
@@ -159,17 +159,17 @@ function SeatPod({ seat, isMe, isWinner, winCards, bb, pos }: { seat: Seat; isMe
          Array.isArray(seat.cards)?seat.cards.map((c,i)=><PlayingCard key={i} card={c} small highlight={winCards?.has(c.r+c.s)}/>):
          <><div style={{width:30,height:42,borderRadius:6,border:"1px solid rgba(255,255,255,0.08)"}}/><div style={{width:30,height:42,borderRadius:6,border:"1px solid rgba(255,255,255,0.08)"}}/></>}
       </div>
-      <div style={{display:"flex",alignItems:"center",gap:6,padding:"4px 8px",borderRadius:8,minWidth:88,background:seat.isTurn?"#1e1b4b":isWinner?"#052e16":isMe?"#1e293b":"#0f172a",border:`2px solid ${seat.isTurn?"#818cf8":isWinner?"#34d399":isMe?"#475569":"rgba(255,255,255,0.06)"}`,boxShadow:seat.isTurn?"0 0 14px rgba(129,140,248,0.5)":isWinner?"0 0 14px rgba(52,211,153,0.5)":"none"}}>
-        <div style={{width:24,height:24,borderRadius:"50%",background:isMe?"#3730a3":"#334155",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,flexShrink:0,position:"relative"}}>
+      <div style={{display:"flex",alignItems:"center",gap:5,padding:"3px 7px",borderRadius:8,minWidth:76,background:seat.isTurn?"#1e1b4b":isWinner?"#052e16":isMe?"#1e293b":"#0f172a",border:`2px solid ${seat.isTurn?"#818cf8":isWinner?"#34d399":isMe?"#475569":"rgba(255,255,255,0.06)"}`,boxShadow:seat.isTurn?"0 0 14px rgba(129,140,248,0.5)":isWinner?"0 0 14px rgba(52,211,153,0.5)":"none"}}>
+        <div style={{width:20,height:20,borderRadius:"50%",background:isMe?"#3730a3":"#334155",display:"flex",alignItems:"center",justifyContent:"center",fontSize:9,fontWeight:700,flexShrink:0,position:"relative"}}>
           {(seat.name||"?")[0].toUpperCase()}
           {seat.isButton&&<span style={{position:"absolute",bottom:-3,right:-3,width:13,height:13,borderRadius:"50%",background:"#facc15",color:"#713f12",fontSize:7,fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center"}}>D</span>}
         </div>
         <div>
           <div style={{display:"flex",alignItems:"center",gap:3}}>
-            <span style={{fontSize:10,fontWeight:600,color:isMe?"#a5b4fc":"#e2e8f0",maxWidth:60,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{seat.name}</span>
+            <span style={{fontSize:9,fontWeight:600,color:isMe?"#a5b4fc":"#e2e8f0",maxWidth:52,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{seat.name}</span>
             {seat.isBot&&<span style={{fontSize:8,color:"#64748b"}}>BOT</span>}
           </div>
-          <div style={{fontSize:9,color:"#fde68a",fontFamily:"monospace"}}>{sol(seat.chips)}</div>
+          <div style={{fontSize:8,color:"#fde68a",fontFamily:"monospace"}}>{sol(seat.chips)}</div>
         </div>
       </div>
       {seat.allIn&&<span style={{fontSize:8,padding:"1px 5px",background:"rgba(249,115,22,0.2)",color:"#fb923c",borderRadius:3,fontWeight:700}}>ALL-IN</span>}
@@ -370,7 +370,7 @@ function TableView({ table, onAct, onChat, onReact, onLeave, onSitDown }: {
         </div>
 
         {/* FELT */}
-        <div style={{position:"relative",width:"100%",paddingBottom:"55%",borderRadius:"40%",border:"12px solid rgba(120,53,15,0.55)",boxShadow:"0 0 50px rgba(0,0,0,0.8),inset 0 0 50px rgba(0,0,0,0.4)",background:"radial-gradient(ellipse at 50% 40%,#166534,#14532d,#052e16)",overflow:"hidden"}}>
+        <div style={{position:"relative",width:"100%",paddingBottom:"62%",borderRadius:"40%",border:"12px solid rgba(120,53,15,0.55)",boxShadow:"0 0 50px rgba(0,0,0,0.8),inset 0 0 50px rgba(0,0,0,0.4)",background:"radial-gradient(ellipse at 50% 40%,#166534,#14532d,#052e16)",overflow:"hidden"}}>
           {/* center content */}
           <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6,zIndex:2,pointerEvents:"none",paddingBottom:"8%"}}>
             {table.handActive && table.street && <div style={{padding:"2px 10px",background:"rgba(0,0,0,0.35)",borderRadius:20,color:"rgba(134,239,172,0.65)",fontSize:10,fontFamily:"monospace",letterSpacing:3}}>{table.street.toUpperCase()}</div>}
