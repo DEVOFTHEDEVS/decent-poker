@@ -216,8 +216,8 @@ function useWS(url: string) {
         try {
           const m = JSON.parse(e.data);
           if (m.type==="lobby") setLobby(m.tables);
-          else if (m.type==="state"||m.type==="joined") { tableRef.current=m.table; setTable({...m.table}); }
-          else if (m.type==="room_created") { setRoomId(m.roomId); tableRef.current=m.table; setTable({...m.table}); }
+          else if (m.type==="state"||m.type==="joined") { tableRef.current=m.table; setTable({...m.table}); if (m.table?.you && typeof sessionStorage !== "undefined") sessionStorage.setItem("current_table_id", m.table.id); }
+          else if (m.type==="room_created") { setRoomId(m.roomId); tableRef.current=m.table; setTable({...m.table}); if (typeof sessionStorage !== "undefined") sessionStorage.setItem("current_table_id", m.table.id); }
           else if (m.type==="cashout") { setTable(null); tableRef.current=null; }
           else if (m.type==="error") setError(m.message);
           else if (m.type==="kicked") { setTable(null); tableRef.current=null; setError(m.reason==="chips"?"You busted out!":"Kicked for inactivity."); }
@@ -243,6 +243,7 @@ function TableView({ table, onAct, onChat, onReact, onLeave, onSitDown }: {
   onSitDown?: () => void;
 }) {
   const [chatText, setChatText] = useState("");
+  const [autoAction, setAutoAction] = useState<"checkFold"|"callAny"|"check"|null>(null);
   const [raiseAmt, setRaiseAmt] = useState(0);
   const [timeLeft, setTimeLeft] = useState(20);
   const chatRef = useRef<HTMLDivElement>(null);
@@ -274,6 +275,22 @@ function TableView({ table, onAct, onChat, onReact, onLeave, onSitDown }: {
   useEffect(() => {
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
   }, [table.chat?.length]);
+
+  // Auto-action: fire when it becomes our turn
+  useEffect(() => {
+    if (!you?.myTurn || !autoAction) return;
+    const timer = setTimeout(() => {
+      if (autoAction === "checkFold") {
+        onAct(you.canCheck ? {type:"check"} : {type:"fold"});
+      } else if (autoAction === "callAny") {
+        onAct(you.canCheck ? {type:"check"} : {type:"call"});
+      } else if (autoAction === "check" && you.canCheck) {
+        onAct({type:"check"});
+      }
+      setAutoAction(null);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [you?.myTurn, autoAction]);
 
   // Sound effects based on state changes
   useEffect(() => {
@@ -321,6 +338,9 @@ function TableView({ table, onAct, onChat, onReact, onLeave, onSitDown }: {
     }
 
     // Win
+    if (!table.handActive && prev.handActive) {
+      setAutoAction(null);
+    }
     if (table.lastResult && !prev.lastResult) {
       const isWinner = table.lastResult.winners.some(w => w.seat === table.you?.seat);
       if (isWinner) Sounds.win();
@@ -351,7 +371,7 @@ function TableView({ table, onAct, onChat, onReact, onLeave, onSitDown }: {
   };
 
   return (
-    <div style={{display:"flex",flexDirection:"column",gap:10,padding:"8px 10px",maxWidth:1200,margin:"0 auto"}}>
+    <div style={{display:"grid",gridTemplateRows:"auto auto auto auto",gap:6,padding:"6px 8px",maxWidth:1200,margin:"0 auto",height:"calc(100vh - 48px)",boxSizing:"border-box",overflowY:"auto"}}>
       {/* LEFT COLUMN */}
       <div style={{flex:1,display:"flex",flexDirection:"column",gap:8,minWidth:0}}>
 
@@ -370,7 +390,7 @@ function TableView({ table, onAct, onChat, onReact, onLeave, onSitDown }: {
         </div>
 
         {/* FELT */}
-        <div style={{position:"relative",width:"100%",paddingBottom:"62%",borderRadius:"40%",border:"12px solid rgba(120,53,15,0.55)",boxShadow:"0 0 50px rgba(0,0,0,0.8),inset 0 0 50px rgba(0,0,0,0.4)",background:"radial-gradient(ellipse at 50% 40%,#166534,#14532d,#052e16)",overflow:"hidden"}}>
+        <div style={{position:"relative",width:"100%",paddingBottom:"46%",borderRadius:"40%",border:"12px solid rgba(120,53,15,0.55)",boxShadow:"0 0 50px rgba(0,0,0,0.8),inset 0 0 50px rgba(0,0,0,0.4)",background:"radial-gradient(ellipse at 50% 40%,#166534,#14532d,#052e16)",overflow:"hidden"}}>
           {/* center content */}
           <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6,zIndex:2,pointerEvents:"none",paddingBottom:"8%"}}>
             {table.handActive && table.street && <div style={{padding:"2px 10px",background:"rgba(0,0,0,0.35)",borderRadius:20,color:"rgba(134,239,172,0.65)",fontSize:10,fontFamily:"monospace",letterSpacing:3}}>{table.street.toUpperCase()}</div>}
@@ -422,12 +442,12 @@ function TableView({ table, onAct, onChat, onReact, onLeave, onSitDown }: {
           {you?.myTurn ? (
             <div style={{display:"flex",flexDirection:"column",gap:10}}>
               {/* YOUR TURN header + timer */}
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",paddingBottom:8,borderBottom:"1px solid rgba(99,102,241,0.15)"}}>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",paddingBottom:5,borderBottom:"1px solid rgba(99,102,241,0.15)"}}>
                 <span style={{color:"#a5b4fc",fontSize:12,fontWeight:700,letterSpacing:2}}>▸ YOUR TURN</span>
                 <span style={{fontSize:13,fontFamily:"monospace",fontWeight:700,color:timeLeft<=5?"#ef4444":timeLeft<=10?"#f59e0b":"#64748b"}}>{timeLeft}s</span>
               </div>
               {/* timer bar */}
-              <div style={{height:4,background:"rgba(255,255,255,0.07)",borderRadius:2,overflow:"hidden"}}>
+              <div style={{height:3,background:"rgba(255,255,255,0.07)",borderRadius:2,overflow:"hidden"}}>
                 <div style={{height:"100%",width:`${(timeLeft/20)*100}%`,background:timeLeft>8?"#6366f1":timeLeft>3?"#f59e0b":"#ef4444",borderRadius:2,transition:"width 0.25s linear"}}/>
               </div>
               {/* main buttons */}
@@ -478,7 +498,23 @@ function TableView({ table, onAct, onChat, onReact, onLeave, onSitDown }: {
               <div style={{color:"#94a3b8",fontSize:13}}>⏳ Sitting out — dealt in next hand</div>
             </div>
           ) : you?.inHand ? (
-            <div style={{textAlign:"center",color:"#64748b",fontSize:13}}>{table.handActive?"Waiting for your turn…":"Next hand coming up…"}</div>
+            <div style={{display:"flex",flexDirection:"column",gap:6}}>
+              <div style={{textAlign:"center",color:"#64748b",fontSize:12}}>{table.handActive?"Waiting for your turn…":"Next hand coming up…"}</div>
+              {table.handActive && (
+                <div style={{display:"flex",gap:6}}>
+                  {(["checkFold","callAny","check"] as const).map(a => (
+                    <button key={a}
+                      onClick={() => setAutoAction(autoAction===a ? null : a)}
+                      style={{flex:1,padding:"7px 0",borderRadius:8,fontSize:11,fontWeight:600,cursor:"pointer",
+                        background:autoAction===a?"rgba(99,102,241,0.3)":"rgba(30,41,59,0.6)",
+                        border:autoAction===a?"1px solid #6366f1":"1px solid rgba(255,255,255,0.08)",
+                        color:autoAction===a?"#a5b4fc":"#64748b"}}>
+                      {a==="checkFold"?"Check/Fold":a==="callAny"?"Call Any":"Check"}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           ) : (
             <div style={{textAlign:"center"}}>{onSitDown&&<button onClick={onSitDown} style={{padding:"10px 24px",background:"#4338ca",color:"#fff",border:"none",borderRadius:9,fontSize:14,fontWeight:700,cursor:"pointer"}}>SIT DOWN</button>}</div>
           )}
@@ -788,6 +824,7 @@ export default function App() {
   }
 
   function handleRoom() {
+    if (typeof sessionStorage !== "undefined") { sessionStorage.setItem("player_seed", seed); }
     send({ type:"create_room", name:getPlayerName(), playerSeed:seed, sb:10_000_000, bb:20_000_000, maxPlayers:6, roomName:`${getPlayerName()}'s Table` });
   }
 
