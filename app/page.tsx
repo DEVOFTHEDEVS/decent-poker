@@ -477,7 +477,7 @@ function RoomSettings({ onConfirm, onCancel, playerName }: { onConfirm:(s:any)=>
         <div style={{fontSize:10,color:"#64748b",marginBottom:4,fontWeight:600,letterSpacing:1}}>CURRENCY</div>
         <div style={{display:"flex",gap:6}}>
           {(['chips','sol'] as const).map(cur=>(
-            <button key={cur} onClick={()=>{setCurrency(cur);setSb(cur==='chips'?'5':'0.05');setBb(cur==='chips'?'10':'0.10');setChips(cur==='chips'?'1000':'1');}}
+            <button key={cur} onClick={()=>{setCurrency(cur);setSbN(cur==='chips'?5:0.05);setBbN(cur==='chips'?10:0.10);setChipsN(cur==='chips'?1000:1);}}
               style={{flex:1,padding:"7px 0",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",
                 background:currency===cur?"rgba(99,102,241,0.3)":"rgba(30,41,59,0.6)",
                 border:currency===cur?"1px solid #6366f1":"1px solid rgba(255,255,255,0.08)",
@@ -512,12 +512,12 @@ function RoomSettings({ onConfirm, onCancel, playerName }: { onConfirm:(s:any)=>
         <div style={{display:"flex",gap:6}}>
           <div style={{flex:1}}>
             <div style={{fontSize:9,color:"#475569",marginBottom:2}}>SB</div>
-            <input type="number" value={sb} onChange={e=>setSb(e.target.value)} step={currency==='chips'?1:0.01} min={currency==='chips'?1:0.01}
+            <input type="number" value={sbN} onChange={e=>setSbN(parseFloat(e.target.value)||1)} step={currency==='chips'?1:0.01} min={currency==='chips'?1:0.01}
               style={{width:"100%",background:"rgba(30,41,59,0.7)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:7,padding:"6px 8px",fontSize:13,color:"#f1f5f9",outline:"none",boxSizing:"border-box",fontFamily:"monospace"}}/>
           </div>
           <div style={{flex:1}}>
             <div style={{fontSize:9,color:"#475569",marginBottom:2}}>BB</div>
-            <input type="number" value={bb} onChange={e=>setBb(e.target.value)} step={currency==='chips'?1:0.01} min={currency==='chips'?2:0.02}
+            <input type="number" value={bbN} onChange={e=>setBbN(parseFloat(e.target.value)||2)} step={currency==='chips'?1:0.01} min={currency==='chips'?2:0.02}
               style={{width:"100%",background:"rgba(30,41,59,0.7)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:7,padding:"6px 8px",fontSize:13,color:"#f1f5f9",outline:"none",boxSizing:"border-box",fontFamily:"monospace"}}/>
           </div>
         </div>
