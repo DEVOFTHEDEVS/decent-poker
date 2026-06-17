@@ -351,7 +351,7 @@ function TableView({ table, onAct, onChat, onReact, onLeave, onSitDown }: {
   };
 
   return (
-    <div style={{display:"flex",gap:10,padding:"8px 12px",maxWidth:1200,margin:"0 auto",alignItems:"flex-start"}}>
+    <div style={{display:"flex",flexDirection:"column",gap:10,padding:"8px 10px",maxWidth:1200,margin:"0 auto"}}>
       {/* LEFT COLUMN */}
       <div style={{flex:1,display:"flex",flexDirection:"column",gap:8,minWidth:0}}>
 
@@ -370,7 +370,7 @@ function TableView({ table, onAct, onChat, onReact, onLeave, onSitDown }: {
         </div>
 
         {/* FELT */}
-        <div style={{position:"relative",width:"100%",paddingBottom:"38%",borderRadius:"40%",border:"12px solid rgba(120,53,15,0.55)",boxShadow:"0 0 50px rgba(0,0,0,0.8),inset 0 0 50px rgba(0,0,0,0.4)",background:"radial-gradient(ellipse at 50% 40%,#166534,#14532d,#052e16)",overflow:"hidden"}}>
+        <div style={{position:"relative",width:"100%",paddingBottom:"55%",borderRadius:"40%",border:"12px solid rgba(120,53,15,0.55)",boxShadow:"0 0 50px rgba(0,0,0,0.8),inset 0 0 50px rgba(0,0,0,0.4)",background:"radial-gradient(ellipse at 50% 40%,#166534,#14532d,#052e16)",overflow:"hidden"}}>
           {/* center content */}
           <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6,zIndex:2,pointerEvents:"none"}}>
             {table.handActive && table.street && <div style={{padding:"2px 10px",background:"rgba(0,0,0,0.35)",borderRadius:20,color:"rgba(134,239,172,0.65)",fontSize:10,fontFamily:"monospace",letterSpacing:3}}>{table.street.toUpperCase()}</div>}
@@ -434,19 +434,19 @@ function TableView({ table, onAct, onChat, onReact, onLeave, onSitDown }: {
               <div style={{display:"flex",gap:10}}>
                 <button
                   onClick={() => onAct({type:"fold"})}
-                  style={{flex:1,padding:"14px 0",background:"rgba(180,29,29,0.65)",border:"2px solid #dc2626",borderRadius:10,color:"#fecaca",fontWeight:800,fontSize:15,cursor:"pointer"}}>
+                  style={{flex:1,padding:"16px 0",background:"rgba(180,29,29,0.65)",border:"2px solid #dc2626",borderRadius:12,color:"#fecaca",fontWeight:800,fontSize:16,cursor:"pointer"}}>
                   FOLD
                 </button>
                 {you.canCheck ? (
                   <button
                     onClick={() => onAct({type:"check"})}
-                    style={{flex:1,padding:"14px 0",background:"rgba(51,65,85,0.8)",border:"2px solid #475569",borderRadius:10,color:"#e2e8f0",fontWeight:800,fontSize:15,cursor:"pointer"}}>
+                    style={{flex:1,padding:"16px 0",background:"rgba(51,65,85,0.8)",border:"2px solid #475569",borderRadius:12,color:"#e2e8f0",fontWeight:800,fontSize:16,cursor:"pointer"}}>
                     CHECK
                   </button>
                 ) : (
                   <button
                     onClick={() => onAct({type:"call"})}
-                    style={{flex:1,padding:"14px 0",background:"rgba(67,56,202,0.65)",border:"2px solid #6366f1",borderRadius:10,color:"#e0e7ff",fontWeight:800,fontSize:15,cursor:"pointer"}}>
+                    style={{flex:1,padding:"16px 0",background:"rgba(67,56,202,0.65)",border:"2px solid #6366f1",borderRadius:12,color:"#e0e7ff",fontWeight:800,fontSize:16,cursor:"pointer"}}>
                     CALL {sol(you.toCall)}
                   </button>
                 )}
@@ -501,7 +501,7 @@ function TableView({ table, onAct, onChat, onReact, onLeave, onSitDown }: {
       </div>
 
       {/* RIGHT SIDEBAR */}
-      <div style={{width:190,display:"flex",flexDirection:"column",gap:8,flexShrink:0}}>
+      <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
         {/* chat */}
         <div style={{...s.panel,display:"flex",flexDirection:"column",overflow:"hidden"}}>
           <div style={{padding:"6px 10px",borderBottom:"1px solid rgba(255,255,255,0.05)",fontSize:9,color:"#334155",fontFamily:"monospace",letterSpacing:2}}>CHAT</div>
@@ -526,7 +526,7 @@ function TableView({ table, onAct, onChat, onReact, onLeave, onSitDown }: {
         </div>
         {/* reactions */}
         {you && (
-          <div style={{...s.panel,padding:"8px 10px"}}>
+          <div style={{padding:"8px 10px",background:"rgba(15,23,42,0.8)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:12,alignSelf:"flex-start"}}>
             <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
               {["😂","😤","🤔","😭","🔥","💩","👋"].map(e=>(
                 <button key={e} onClick={()=>onReact(e)} style={{fontSize:18,background:"none",border:"none",cursor:"pointer",padding:2}}>{e}</button>
