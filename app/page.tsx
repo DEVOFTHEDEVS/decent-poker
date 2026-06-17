@@ -756,7 +756,7 @@ function ShareModal({ roomId, onClose }: { roomId: string; onClose: () => void }
 }
 
 // ── App ───────────────────────────────────────────────────────────────────────
-const WS_URL = "ws://localhost:3001";
+const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "wss://decent-poker-production.up.railway.app";
 
 export default function App() {
   const { connected, lobby, table, error, roomId, setRoomId, send, setTable } = useWS(WS_URL);
