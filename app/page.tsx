@@ -125,7 +125,7 @@ const Sounds = {
 // ── Card ──────────────────────────────────────────────────────────────────────
 function PlayingCard({ card, small, highlight }: { card: Card|"back"|null; small?: boolean; highlight?: boolean }) {
   if (!card) return null;
-  const w = small ? 30 : 46; const h = small ? 42 : 64; const fs = small ? 9 : 12;
+  const w = small ? 26 : 38; const h = small ? 36 : 54; const fs = small ? 8 : 11;
   if (card === "back") return (
     <div style={{width:w,height:h,borderRadius:6,background:"linear-gradient(135deg,#1e1b4b,#312e81)",border:"1px solid #4338ca",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
       <div style={{width:"80%",height:"80%",borderRadius:4,border:"1px solid rgba(99,102,241,0.3)",background:"repeating-linear-gradient(45deg,transparent,transparent 3px,rgba(99,102,241,0.08) 3px,rgba(99,102,241,0.08) 6px)"}}/>
@@ -146,7 +146,7 @@ function SeatPod({ seat, isMe, isWinner, winCards, bb, pos }: { seat: Seat; isMe
   const showAction = seat.lastAction && Date.now() - seat.lastAction.ts < 3500;
   const aC: Record<string,string> = {FOLD:"#ef4444",CHECK:"#94a3b8","ALL-IN":"#f97316",CALL:"#6366f1",RAISE:"#8b5cf6",BET:"#8b5cf6",SB:"#64748b",BB:"#64748b"};
   return (
-    <div style={{position:"absolute",left:pos.left,top:pos.top,transform:"translate(-50%,-50%)",display:"flex",flexDirection:"column",alignItems:"center",gap:3,zIndex:seat.isTurn?20:10,opacity:seat.folded?0.35:1,pointerEvents:"none"}}>
+    <div style={{position:"absolute",left:pos.left,top:pos.top,transform:"translate(-50%,-50%)",display:"flex",flexDirection:"column",alignItems:"center",gap:2,zIndex:seat.isTurn?20:10,opacity:seat.folded?0.35:1,pointerEvents:"none"}}>
       {seat.bet > 0 && (
         <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:1}}>
           <div style={{display:"flex",gap:2}}>{Array.from({length:Math.min(5,Math.max(1,Math.ceil(seat.bet/(bb*5))))}).map((_,i)=><div key={i} style={{width:8,height:8,borderRadius:"50%",background:"linear-gradient(#facc15,#ca8a04)",border:"1px solid #fde68a"}}/>)}</div>
@@ -376,8 +376,8 @@ function TableView({ table, onAct, onChat, onReact, onLeave, onSitDown }: {
             {table.handActive && table.street && <div style={{padding:"2px 10px",background:"rgba(0,0,0,0.35)",borderRadius:20,color:"rgba(134,239,172,0.65)",fontSize:10,fontFamily:"monospace",letterSpacing:3}}>{table.street.toUpperCase()}</div>}
             {/* community cards */}
             <div style={{display:"flex",gap:6}}>
-              {(table.board||[]).map((c,i)=><PlayingCard key={i} card={c} highlight={winCards?.has(c.r+c.s)}/>)}
-              {Array.from({length:5-(table.board?.length||0)}).map((_,i)=><div key={i} style={{width:46,height:64,borderRadius:6,border:"1px solid rgba(255,255,255,0.07)",background:"rgba(0,0,0,0.15)"}}/>)}
+              {(table.board||[]).map((c,i)=><div key={i} style={{width:38,height:54}}><PlayingCard card={c} highlight={winCards?.has(c.r+c.s)}/></div>)}
+              {Array.from({length:5-(table.board?.length||0)}).map((_,i)=><div key={i} style={{width:38,height:54,borderRadius:6,border:"1px solid rgba(255,255,255,0.07)",background:"rgba(0,0,0,0.15)"}}/>)}
             </div>
             {/* pot */}
             {pot > 0 && (
@@ -783,6 +783,7 @@ export default function App() {
   }, [!!table]);
 
   function handlePractice() {
+    if (typeof sessionStorage !== "undefined") { sessionStorage.setItem("current_table_id", "table1"); sessionStorage.setItem("player_seed", seed); }
     send({ type:"practice", tableId:"table1", name:getPlayerName(), playerSeed:seed });
   }
 
@@ -791,12 +792,14 @@ export default function App() {
   }
 
   function handleCash(tableId: string, lamports: number) {
+    if (typeof sessionStorage !== "undefined") { sessionStorage.setItem("current_table_id", tableId); sessionStorage.setItem("player_seed", seed); }
     const sig = `dev_${Date.now()}_${seed.slice(0,8)}`;
     send({ type:"join", tableId, lamports, signature:sig, name:getPlayerName(), playerSeed:seed });
   }
 
   function handleLeave() {
     if (table) send({ type:"cashout", tableId:table.id });
+    if (typeof sessionStorage !== "undefined") { sessionStorage.removeItem("current_table_id"); }
     setTable(null);
     setView("home");
     send({ type:"lobby" });
