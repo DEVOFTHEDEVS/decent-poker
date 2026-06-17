@@ -10,6 +10,17 @@ interface LobbyTable { id: string; name: string; seated: number; maxSeats: numbe
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const sol = (l: number) => (l / 1e9).toFixed(3);
+// Smart display: show chips if stack > 10 SOL (likely a chip game not real SOL)
+function displayAmount(l: number, forceChips = false): string {
+  if (forceChips || l > 10_000_000_000) { // > 10 SOL = chip mode
+    const chips = Math.round(l / 1_000_000); // 1 chip = 1M lamports
+    return chips >= 1000 ? chips.toLocaleString() : chips.toString();
+  }
+  return (l / 1e9).toFixed(3) + ' SOL';
+}
+function isChipMode(tableOrChips: number): boolean {
+  return tableOrChips > 10_000_000_000; // if starting chips > 10 SOL equiv = chip game
+}
 const SUIT_COLOR: Record<string, string> = { "♥":"#dc2626","♦":"#dc2626","♠":"#1e293b","♣":"#1e293b" };
 function genSeed() { const a = new Uint8Array(16); if (typeof crypto!=="undefined") crypto.getRandomValues(a); return Array.from(a).map(b=>b.toString(16).padStart(2,"0")).join(""); }
 function getPlayerName() { return (typeof sessionStorage!=="undefined" && sessionStorage.getItem("player_name")) || "Player"; }
@@ -94,7 +105,7 @@ function SeatPod({ seat, isMe, isWinner, winCards, pos }: { seat: Seat; isMe: bo
         </div>
         <div>
           <div style={{fontSize:9,fontWeight:600,color:isMe?"#a5b4fc":"#e2e8f0",maxWidth:48,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{seat.name}{seat.isBot&&<span style={{color:"#475569",marginLeft:2}}>·bot</span>}</div>
-          <div style={{fontSize:8,color:"#fde68a",fontFamily:"monospace"}}>{sol(seat.chips)}</div>
+          <div style={{fontSize:8,color:"#fde68a",fontFamily:"monospace"}}>{displayAmount(seat.chips)}</div>
         </div>
       </div>
       {seat.allIn&&<span style={{fontSize:7,padding:"1px 4px",background:"rgba(249,115,22,0.2)",color:"#fb923c",borderRadius:3,fontWeight:700}}>ALL-IN</span>}
@@ -279,7 +290,7 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown }: {
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"6px 10px",background:"rgba(15,23,42,0.95)",borderBottom:"1px solid rgba(255,255,255,0.06)",flexShrink:0}}>
         <div>
           <span style={{fontWeight:700,color:"#e2e8f0",fontSize:13}}>{table.name}</span>
-          <span style={{fontSize:10,color:"#64748b",marginLeft:8,fontFamily:"monospace"}}>{sol(table.sb)}/{sol(table.bb)}</span>
+          <span style={{fontSize:10,color:"#64748b",marginLeft:8,fontFamily:"monospace"}}>{displayAmount(table.sb)}/{displayAmount(table.bb)}</span>
         </div>
         <div style={{display:"flex",gap:8,alignItems:"center"}}>
           {table.handActive&&<div style={{display:"flex",alignItems:"center",gap:3}}><div style={{width:5,height:5,borderRadius:"50%",background:"#ef4444"}}/><span style={{fontSize:9,color:"#ef4444"}}>LIVE</span></div>}
@@ -309,7 +320,7 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown }: {
                   <div key={i} style={{display:"flex",alignItems:"center",gap:4,padding:"2px 10px",background:"rgba(0,0,0,0.45)",borderRadius:12}}>
                     <div style={{width:12,height:12,borderRadius:"50%",background:"linear-gradient(#facc15,#ca8a04)"}}/>
                     <span style={{fontSize:9,color:"rgba(134,239,172,0.6)",fontFamily:"monospace"}}>{p.label}</span>
-                    <span style={{fontSize:12,color:"#fde68a",fontWeight:700,fontFamily:"monospace"}}>{sol(p.amount)}</span>
+                    <span style={{fontSize:12,color:"#fde68a",fontWeight:700,fontFamily:"monospace"}}>{displayAmount(p.amount)}</span>
                   </div>
                 ))}
               </div>
@@ -328,7 +339,7 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown }: {
           {table.lastResult&&(
             <div style={{position:"absolute",bottom:4,left:"50%",transform:"translateX(-50%)",zIndex:20,whiteSpace:"nowrap",pointerEvents:"none"}}>
               <div style={{padding:"4px 14px",background:"rgba(15,23,42,0.97)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:8,fontSize:11}}>
-                {table.lastResult.winners.map((w,i)=><span key={i} style={{color:"#fde68a",fontWeight:600}}>{w.name} +{sol(w.amount)}{w.hand&&w.hand!=="win"&&w.hand!=="(everyone folded)"&&<span style={{color:"#94a3b8",marginLeft:3}}>· {w.hand}</span>}</span>)}
+                {table.lastResult.winners.map((w,i)=><span key={i} style={{color:"#fde68a",fontWeight:600}}>{w.name} +{displayAmount(w.amount)}{w.hand&&w.hand!=="win"&&w.hand!=="(everyone folded)"&&<span style={{color:"#94a3b8",marginLeft:3}}>· {w.hand}</span>}</span>)}
               </div>
             </div>
           )}
@@ -369,7 +380,7 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown }: {
                 <div style={{display:"flex",gap:8,alignItems:"center"}}>
                   <input type="range" min={rMin} max={rMax} step={Math.max(1,Math.floor(bb/2))} value={raiseAmt} onChange={e=>setRaiseAmt(+e.target.value)} style={{flex:1,accentColor:"#7c3aed"}}/>
                   <button onClick={()=>onAct({type:raiseAmt>=rMax?"allin":"raise",amount:raiseAmt})} style={{padding:"10px 14px",background:"rgba(124,58,237,0.7)",border:"2px solid #8b5cf6",borderRadius:10,color:"#ede9fe",fontWeight:800,fontSize:13,cursor:"pointer",whiteSpace:"nowrap"}}>
-                    {raiseAmt>=rMax?"ALL-IN":"RAISE"} {sol(raiseAmt)}
+                    {raiseAmt>=rMax?"ALL-IN":"RAISE"} {displayAmount(raiseAmt)}
                   </button>
                 </div>
               </div>
@@ -403,7 +414,7 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown }: {
           {[...table.actionLog].slice(-6).map((e,i)=>(
             <div key={i} style={{display:"flex",gap:3,fontSize:10,whiteSpace:"nowrap",flexShrink:0}}>
               <span style={{color:"#475569"}}>{e.name.slice(0,6)}</span>
-              <span style={{color:e.label==="FOLD"?"#ef4444":e.label==="CHECK"?"#64748b":e.label==="ALL-IN"?"#f97316":"#818cf8",fontWeight:600}}>{e.label}{e.amount?` ${sol(e.amount)}`:""}</span>
+              <span style={{color:e.label==="FOLD"?"#ef4444":e.label==="CHECK"?"#64748b":e.label==="ALL-IN"?"#f97316":"#818cf8",fontWeight:600}}>{e.label}{e.amount?` ${displayAmount(e.amount)}`:""}</span>
             </div>
           ))}
         </div>
@@ -440,6 +451,127 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown }: {
   );
 }
 
+// ── Room Settings ────────────────────────────────────────────────────────────
+function RoomSettings({ onConfirm, onCancel, playerName }: { onConfirm:(s:any)=>void; onCancel:()=>void; playerName:string }) {
+  const [currency, setCurrency] = useState<'chips'|'sol'>('chips');
+  const [sb, setSb] = useState('5');
+  const [bb, setBb] = useState('10');
+  const [chips, setChips] = useState('1000');
+  const [maxPlayers, setMaxPlayers] = useState('6');
+  const [roomName, setRoomName] = useState(`${playerName}'s Table`);
+
+  // Convert display values to lamports (we use lamports internally, 1 chip = 1M lamports)
+  function toInternal(val: string) {
+    const n = parseFloat(val) || 0;
+    return currency === 'sol' ? Math.round(n * 1e9) : Math.round(n * 1_000_000);
+  }
+
+  const presetBlinds = currency === 'chips'
+    ? [{sb:'1',bb:'2'},{sb:'5',bb:'10'},{sb:'10',bb:'20'},{sb:'25',bb:'50'},{sb:'50',bb:'100'}]
+    : [{sb:'0.01',bb:'0.02'},{sb:'0.05',bb:'0.10'},{sb:'0.10',bb:'0.20'},{sb:'0.25',bb:'0.50'},{sb:'1.00',bb:'2.00'}];
+
+  const presetChips = currency === 'chips'
+    ? ['500','1000','2000','5000','10000']
+    : ['0.5','1','2','5','10'];
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",gap:10}}>
+      <div style={{fontSize:13,fontWeight:700,color:"#94a3b8",marginBottom:2}}>Room Settings</div>
+
+      {/* Currency toggle */}
+      <div>
+        <div style={{fontSize:10,color:"#64748b",marginBottom:4,fontWeight:600,letterSpacing:1}}>CURRENCY</div>
+        <div style={{display:"flex",gap:6}}>
+          {(['chips','sol'] as const).map(cur=>(
+            <button key={cur} onClick={()=>{setCurrency(cur);setSb(cur==='chips'?'5':'0.05');setBb(cur==='chips'?'10':'0.10');setChips(cur==='chips'?'1000':'1');}}
+              style={{flex:1,padding:"7px 0",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",
+                background:currency===cur?"rgba(99,102,241,0.3)":"rgba(30,41,59,0.6)",
+                border:currency===cur?"1px solid #6366f1":"1px solid rgba(255,255,255,0.08)",
+                color:currency===cur?"#a5b4fc":"#64748b"}}>
+              {cur==='chips'?'🎰 Play Chips':'◎ SOL'}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Room name */}
+      <div>
+        <div style={{fontSize:10,color:"#64748b",marginBottom:4,fontWeight:600,letterSpacing:1}}>ROOM NAME</div>
+        <input value={roomName} onChange={e=>setRoomName(e.target.value)} maxLength={30}
+          style={{width:"100%",background:"rgba(30,41,59,0.7)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:8,padding:"7px 10px",fontSize:13,color:"#f1f5f9",outline:"none",boxSizing:"border-box"}}/>
+      </div>
+
+      {/* Blinds presets */}
+      <div>
+        <div style={{fontSize:10,color:"#64748b",marginBottom:4,fontWeight:600,letterSpacing:1}}>BLINDS</div>
+        <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:5}}>
+          {presetBlinds.map(p=>(
+            <button key={p.sb} onClick={()=>{setSb(p.sb);setBb(p.bb);}}
+              style={{padding:"4px 8px",borderRadius:6,fontSize:11,fontWeight:600,cursor:"pointer",
+                background:sb===p.sb?"rgba(99,102,241,0.3)":"rgba(30,41,59,0.5)",
+                border:sb===p.sb?"1px solid #6366f1":"1px solid rgba(255,255,255,0.06)",
+                color:sb===p.sb?"#a5b4fc":"#64748b"}}>
+              {p.sb}/{p.bb}
+            </button>
+          ))}
+        </div>
+        <div style={{display:"flex",gap:6}}>
+          <div style={{flex:1}}>
+            <div style={{fontSize:9,color:"#475569",marginBottom:2}}>SB</div>
+            <input type="number" value={sb} onChange={e=>setSb(e.target.value)} step={currency==='chips'?1:0.01} min={currency==='chips'?1:0.01}
+              style={{width:"100%",background:"rgba(30,41,59,0.7)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:7,padding:"6px 8px",fontSize:13,color:"#f1f5f9",outline:"none",boxSizing:"border-box",fontFamily:"monospace"}}/>
+          </div>
+          <div style={{flex:1}}>
+            <div style={{fontSize:9,color:"#475569",marginBottom:2}}>BB</div>
+            <input type="number" value={bb} onChange={e=>setBb(e.target.value)} step={currency==='chips'?1:0.01} min={currency==='chips'?2:0.02}
+              style={{width:"100%",background:"rgba(30,41,59,0.7)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:7,padding:"6px 8px",fontSize:13,color:"#f1f5f9",outline:"none",boxSizing:"border-box",fontFamily:"monospace"}}/>
+          </div>
+        </div>
+      </div>
+
+      {/* Starting chips */}
+      <div>
+        <div style={{fontSize:10,color:"#64748b",marginBottom:4,fontWeight:600,letterSpacing:1}}>STARTING STACK</div>
+        <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:5}}>
+          {presetChips.map(p=>(
+            <button key={p} onClick={()=>setChips(p)}
+              style={{padding:"4px 8px",borderRadius:6,fontSize:11,fontWeight:600,cursor:"pointer",
+                background:chips===p?"rgba(99,102,241,0.3)":"rgba(30,41,59,0.5)",
+                border:chips===p?"1px solid #6366f1":"1px solid rgba(255,255,255,0.06)",
+                color:chips===p?"#a5b4fc":"#64748b"}}>
+              {p}
+            </button>
+          ))}
+        </div>
+        <input type="number" value={chips} onChange={e=>setChips(e.target.value)} min={currency==='chips'?100:0.1}
+          style={{width:"100%",background:"rgba(30,41,59,0.7)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:7,padding:"6px 8px",fontSize:13,color:"#f1f5f9",outline:"none",boxSizing:"border-box",fontFamily:"monospace"}}/>
+      </div>
+
+      {/* Max players */}
+      <div>
+        <div style={{fontSize:10,color:"#64748b",marginBottom:4,fontWeight:600,letterSpacing:1}}>MAX PLAYERS</div>
+        <div style={{display:"flex",gap:4}}>
+          {['2','3','4','5','6','8','9'].map(n=>(
+            <button key={n} onClick={()=>setMaxPlayers(n)}
+              style={{flex:1,padding:"5px 0",borderRadius:6,fontSize:12,fontWeight:600,cursor:"pointer",
+                background:maxPlayers===n?"rgba(99,102,241,0.3)":"rgba(30,41,59,0.5)",
+                border:maxPlayers===n?"1px solid #6366f1":"1px solid rgba(255,255,255,0.06)",
+                color:maxPlayers===n?"#a5b4fc":"#64748b"}}>
+              {n}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div style={{display:"flex",gap:8,marginTop:4}}>
+        <button onClick={onCancel} style={{flex:1,padding:"9px 0",borderRadius:9,background:"transparent",border:"1px solid rgba(255,255,255,0.07)",color:"#64748b",fontWeight:700,fontSize:13,cursor:"pointer"}}>BACK</button>
+        <button onClick={()=>onConfirm({sb:toInternal(sb),bb:toInternal(bb),chips:toInternal(chips),currency,name:roomName,maxPlayers:parseInt(maxPlayers)})}
+          style={{flex:2,padding:"9px 0",borderRadius:9,background:"#166534",border:"none",color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer"}}>CREATE ROOM →</button>
+      </div>
+    </div>
+  );
+}
+
 // ── Homepage ──────────────────────────────────────────────────────────────────
 const CASH_TABLES = [
   {id:"table1",name:"Micro Felt",   sb:0.001,bb:0.002,min:0.1, max:1,  color:"#22c55e"},
@@ -450,7 +582,7 @@ const CASH_TABLES = [
   {id:"table6",name:"Custom",       sb:0,    bb:0,    min:0,   max:0,  color:"#64748b"},
 ];
 
-function HomePage({ onPractice, onRoom, onCash, lobby, connected }: { onPractice:()=>void; onRoom:()=>void; onCash:(id:string,l:number,customSb?:number,customBb?:number)=>void; lobby:LobbyTable[]; connected:boolean; }) {
+function HomePage({ onPractice, onRoom, onCash, lobby, connected }: { onPractice:()=>void; onRoom:(settings:{sb:number;bb:number;chips:number;currency:'chips'|'sol';name:string;maxPlayers:number})=>void; onCash:(id:string,l:number,customSb?:number,customBb?:number)=>void; lobby:LobbyTable[]; connected:boolean; }) {
   const [name, setName] = useState(()=>typeof sessionStorage!=="undefined"?sessionStorage.getItem("player_name")||"":"");
   const [nameErr, setNameErr] = useState("");
   const [showRoom, setShowRoom] = useState(false);
@@ -491,17 +623,17 @@ function HomePage({ onPractice, onRoom, onCash, lobby, connected }: { onPractice
             <div style={{fontSize:26,marginBottom:8}}>🃏</div>
             <h2 style={{margin:"0 0 6px",fontSize:17,fontWeight:800,color:"#f1f5f9"}}>Friend Table</h2>
             <p style={{margin:"0 0 12px",color:"#64748b",fontSize:12}}>Private room with shareable link. No wallet needed.</p>
-            {!showRoom?(
-              <button onClick={()=>{if(!requireName())return;setShowRoom(true);}} style={{width:"100%",padding:"10px 0",background:"#166534",color:"#fff",border:"none",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer"}}>CREATE OR JOIN →</button>
-            ):(
-              <div style={{display:"flex",flexDirection:"column",gap:7}}>
-                <button onClick={()=>{if(!requireName())return;onRoom();}} style={{padding:"9px 0",background:"#166534",color:"#fff",border:"none",borderRadius:9,fontSize:13,fontWeight:700,cursor:"pointer"}}>CREATE ROOM</button>
+            {!showRoom ? (
+              <div style={{display:"flex",flexDirection:"column",gap:6}}>
+                <button onClick={()=>{if(!requireName())return;setShowRoom(true);}} style={{width:"100%",padding:"10px 0",background:"#166534",color:"#fff",border:"none",borderRadius:10,fontSize:14,fontWeight:700,cursor:"pointer"}}>CREATE ROOM →</button>
                 <div style={{display:"flex",gap:6}}>
-                  <input value={roomCode} onChange={e=>setRoomCode(e.target.value.toLowerCase())} placeholder="Room code…" maxLength={6}
-                    style={{flex:1,background:"rgba(30,41,59,0.8)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:8,padding:"7px 10px",fontSize:13,color:"#f1f5f9",outline:"none",fontFamily:"monospace",letterSpacing:2}}/>
-                  <button onClick={()=>{if(roomCode.trim().length===6)window.location.href=`/table/${roomCode.trim()}`;}} style={{padding:"7px 12px",background:"rgba(22,101,52,0.5)",border:"1px solid rgba(34,197,94,0.3)",borderRadius:8,color:"#86efac",fontSize:13,fontWeight:700,cursor:"pointer"}}>JOIN</button>
+                  <input value={roomCode} onChange={e=>setRoomCode(e.target.value.toLowerCase())} placeholder="Have a code? Enter it…" maxLength={6}
+                    style={{flex:1,background:"rgba(30,41,59,0.6)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:8,padding:"7px 10px",fontSize:13,color:"#f1f5f9",outline:"none",fontFamily:"monospace",letterSpacing:2}}/>
+                  <button onClick={()=>{if(roomCode.trim().length===6)window.location.href=`/table/${roomCode.trim()}`;}} style={{padding:"7px 12px",background:"rgba(22,101,52,0.4)",border:"1px solid rgba(34,197,94,0.25)",borderRadius:8,color:"#86efac",fontSize:13,fontWeight:700,cursor:"pointer"}}>JOIN</button>
                 </div>
               </div>
+            ) : (
+              <RoomSettings onCancel={()=>setShowRoom(false)} onConfirm={(s)=>{if(!requireName())return;onRoom(s);}} playerName={name}/>
             )}
           </div>
         </div>
@@ -633,9 +765,11 @@ export default function App() {
     send({ type:"practice", tableId:"table1", name:getPlayerName(), playerSeed:seed });
   }
 
-  function handleRoom() {
+  function handleRoom(settings: {sb:number;bb:number;chips:number;currency:string;name:string;maxPlayers:number}) {
     sessionStorage.setItem("player_seed", seed);
-    send({ type:"create_room", name:getPlayerName(), playerSeed:seed, sb:10_000_000, bb:20_000_000, maxPlayers:6, roomName:`${getPlayerName()}'s Table` });
+    sessionStorage.setItem("room_currency", settings.currency);
+    sessionStorage.setItem("room_chips_start", settings.chips.toString());
+    send({ type:"create_room", name:getPlayerName(), playerSeed:seed, sb:settings.sb, bb:settings.bb, maxPlayers:settings.maxPlayers, roomName:settings.name || `${getPlayerName()}'s Table` });
   }
 
   function handleCash(tableId: string, lamports: number) {
@@ -686,7 +820,7 @@ export default function App() {
         />
       ) : (
         <div style={{paddingTop:36}}>
-          <HomePage onPractice={handlePractice} onRoom={handleRoom} onCash={handleCash} lobby={lobby} connected={connected}/>
+          <HomePage onPractice={handlePractice} onRoom={(s)=>handleRoom(s)} onCash={handleCash} lobby={lobby} connected={connected}/>
         </div>
       )}
 

@@ -31,6 +31,7 @@ export class PokerServer {
   private tables: Map<string, PokerTable>;
   private clients: Map<WebSocket, ConnectedClient>;
   private dynamicRooms: Map<string, { tableId: string; createdAt: number }>; // roomId → tableId
+  private disconnectTimers: Map<string, ReturnType<typeof setTimeout>>; // playerId → timer
   private pingInterval: ReturnType<typeof setInterval>;
 
   // Injected dependencies
@@ -42,6 +43,7 @@ export class PokerServer {
     this.tables = new Map();
     this.clients = new Map();
     this.dynamicRooms = new Map();
+    this.disconnectTimers = new Map();
 
     // Initialize tables
     for (const cfg of TABLE_CONFIGS) {
@@ -102,17 +104,33 @@ export class PokerServer {
   }
 
   private handleDisconnect(client: ConnectedClient): void {
-    if (client.tableId && client.playerId && !client.isSpectator) {
-      const table = this.tables.get(client.tableId);
-      if (table) {
-        // Return chips via cashout
-        const chips = table.leave(client.playerId);
-        if (chips > 0 && this.onCashOut) {
-          this.onCashOut(client.playerId, chips, client.tableId).catch(console.error);
-        }
-      }
-    }
     this.clients.delete(client.ws);
+
+    if (client.tableId && client.playerId && !client.isSpectator) {
+      const playerId = client.playerId;
+      const tableId = client.tableId;
+
+      // Grace period: keep player seated for 60s so they can reconnect
+      // If they reconnect within 60s, cancel the timer
+      const timer = setTimeout(() => {
+        this.disconnectTimers.delete(playerId);
+        const table = this.tables.get(tableId);
+        if (table) {
+          // Only remove if they haven't reconnected (no active client with this playerId)
+          const stillConnected = Array.from(this.clients.values()).some(c => c.playerId === playerId);
+          if (!stillConnected) {
+            console.log(`[DISCONNECT] Removing ${playerId} from ${tableId} after grace period`);
+            const chips = table.leave(playerId);
+            if (chips > 0 && this.onCashOut) {
+              this.onCashOut(playerId, chips, tableId).catch(console.error);
+            }
+          }
+        }
+      }, 60_000); // 60 second grace period
+
+      this.disconnectTimers.set(playerId, timer);
+      console.log(`[DISCONNECT] ${playerId} disconnected — waiting 60s for reconnect`);
+    }
   }
 
   // ── Message Handling ────────────────────────────────────────────────────────
@@ -211,13 +229,13 @@ export class PokerServer {
       }
 
       case "create_room": {
-        const { name: crName, playerSeed: crSeed, sb: crSb, bb: crBb, maxPlayers: crMax, roomName: crRoomName } = msg;
+        const { name: crName, playerSeed: crSeed, sb: crSb, bb: crBb, maxPlayers: crMax, roomName: crRoomName, chips: crChips } = msg as any;
         const { roomId, table: crTable } = this.createRoom(crSb || 10_000_000, crBb || 20_000_000, crMax || 6, crRoomName);
         const playerId = `room_${crSeed.slice(0, 12)}`;
         client.playerId = playerId;
         client.tableId = crTable["cfg"].id;
         client.isSpectator = false;
-        const ROOM_CHIPS = 1_000_000_000_000;
+        const ROOM_CHIPS = crChips || 1_000_000_000_000; // use custom chips or default 1000
         crTable.sitDown(playerId, crName || "Host", ROOM_CHIPS, crSeed);
         const roomUrl = `/table/${roomId}`;
         this.send(client.ws, { type: "room_created", roomId, url: roomUrl, table: crTable.getClientState(playerId) });
@@ -226,6 +244,11 @@ export class PokerServer {
 
       case "join_room": {
         const { roomId: jrId, name: jrName, playerSeed: jrSeed } = msg;
+        const jrChips = (msg as any).chips;
+        // Cancel any pending disconnect timer
+        const jrCancelId = `room_${jrSeed.slice(0, 12)}`;
+        const jrTimer = this.disconnectTimers.get(jrCancelId);
+        if (jrTimer) { clearTimeout(jrTimer); this.disconnectTimers.delete(jrCancelId); }
         const roomInfo = this.dynamicRooms.get(jrId);
         if (!roomInfo) { this.send(client.ws, { type: "error", message: "Room not found — ask the host to share a new link, or the server may have restarted." }); return; }
         const jrTable = this.tables.get(roomInfo.tableId);
@@ -235,7 +258,8 @@ export class PokerServer {
         client.tableId = roomInfo.tableId;
         client.isSpectator = false;
         const ROOM_CHIPS = 1_000_000_000_000;
-        const ok = jrTable.sitDown(playerId, jrName || "Player", ROOM_CHIPS, jrSeed);
+        const tableChips = jrChips || (jrTable as any).cfg?.minBuyIn * 50 || 1_000_000_000_000;
+        const ok = jrTable.sitDown(playerId, jrName || "Player", tableChips, jrSeed);
         if (!ok) { this.send(client.ws, { type: "error", message: "Room is full" }); return; }
         this.send(client.ws, { type: "joined", table: jrTable.getClientState(playerId) });
         break;
@@ -244,6 +268,10 @@ export class PokerServer {
       case "rejoin": {
         // Client reconnected and wants to resume their session
         const { tableId: rjTableId, playerSeed: rjSeed } = msg;
+        // Cancel any pending disconnect timer for this player
+        const rjPlayerId2 = `player_${rjSeed.slice(0, 12)}`;
+        const pendingTimer = this.disconnectTimers.get(rjPlayerId2);
+        if (pendingTimer) { clearTimeout(pendingTimer); this.disconnectTimers.delete(rjPlayerId2); console.log(`[RECONNECT] ${rjPlayerId2} reconnected in time`); }
         const rjTable = this.tables.get(rjTableId);
         if (!rjTable) { this.send(client.ws, { type: "error", message: "Table not found" }); return; }
         const rjPlayerId = `player_${rjSeed.slice(0, 12)}`;
