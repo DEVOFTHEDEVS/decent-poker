@@ -331,7 +331,7 @@ function TableView({ table, onAct, onChat, onReact, onLeave, onSitDown }: {
     const n = table.maxSeats;
     const rotated = (idx - myIndex + n) % n;
     const angle = (270 + (360/n) * rotated) * Math.PI / 180;
-    return { left:`${50 + 44*Math.cos(angle)}%`, top:`${52 + 40*Math.sin(angle)}%` };
+    return { left:`${50 + 46*Math.cos(angle)}%`, top:`${54 + 42*Math.sin(angle)}%` };
   }
 
   const pot = table.pot;
@@ -372,7 +372,7 @@ function TableView({ table, onAct, onChat, onReact, onLeave, onSitDown }: {
         {/* FELT */}
         <div style={{position:"relative",width:"100%",paddingBottom:"55%",borderRadius:"40%",border:"12px solid rgba(120,53,15,0.55)",boxShadow:"0 0 50px rgba(0,0,0,0.8),inset 0 0 50px rgba(0,0,0,0.4)",background:"radial-gradient(ellipse at 50% 40%,#166534,#14532d,#052e16)",overflow:"hidden"}}>
           {/* center content */}
-          <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6,zIndex:2,pointerEvents:"none"}}>
+          <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6,zIndex:2,pointerEvents:"none",paddingBottom:"8%"}}>
             {table.handActive && table.street && <div style={{padding:"2px 10px",background:"rgba(0,0,0,0.35)",borderRadius:20,color:"rgba(134,239,172,0.65)",fontSize:10,fontFamily:"monospace",letterSpacing:3}}>{table.street.toUpperCase()}</div>}
             {/* community cards */}
             <div style={{display:"flex",gap:6}}>
