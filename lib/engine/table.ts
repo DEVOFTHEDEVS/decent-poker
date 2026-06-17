@@ -51,6 +51,7 @@ export class PokerTable {
 
   // Callbacks
   onStateChange?: (table: PokerTable) => void;
+  onKick?: (playerId: string, reason: string) => void;
   onHandComplete?: (result: HandResult, tableId: string) => void;
 
   constructor(cfg: TableConfig) {
