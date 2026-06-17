@@ -450,27 +450,23 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown }: {
 // ── Room Settings ────────────────────────────────────────────────────────────
 function RoomSettings({ onConfirm, onCancel, playerName }: { onConfirm:(s:any)=>void; onCancel:()=>void; playerName:string }) {
   const [currency, setCurrency] = useState<'chips'|'sol'>('chips');
-  const [sb, setSb] = useState('5');
-  const [bb, setBb] = useState('10');
-  const [chips, setChips] = useState('1000');
-  const [maxPlayers, setMaxPlayers] = useState('6');
+  const [sbN, setSbN] = useState(5);
+  const [bbN, setBbN] = useState(10);
+  const [chipsN, setChipsN] = useState(1000);
+  const [maxPlayers, setMaxPlayers] = useState(6);
   const [roomName, setRoomName] = useState(`${playerName}'s Table`);
 
-  // Convert display values to lamports
-  // chips: 1 chip = 1 lamport (keeps numbers small and readable)
-  // sol: 1 SOL = 1_000_000_000 lamports
-  function toInternal(val: string) {
-    const n = parseFloat(val) || 0;
-    return currency === 'sol' ? Math.round(n * 1e9) : Math.round(n); // chips stored 1:1
+  function toInternal(n: number) {
+    return currency === 'sol' ? Math.round(n * 1e9) : n; // chips: 1:1, sol: lamports
   }
 
   const presetBlinds = currency === 'chips'
-    ? [{sb:'1',bb:'2'},{sb:'5',bb:'10'},{sb:'10',bb:'20'},{sb:'25',bb:'50'},{sb:'50',bb:'100'}]
-    : [{sb:'0.01',bb:'0.02'},{sb:'0.05',bb:'0.10'},{sb:'0.10',bb:'0.20'},{sb:'0.25',bb:'0.50'},{sb:'1.00',bb:'2.00'}];
+    ? [{sb:1,bb:2},{sb:5,bb:10},{sb:10,bb:20},{sb:25,bb:50},{sb:50,bb:100}]
+    : [{sb:0.01,bb:0.02},{sb:0.05,bb:0.10},{sb:0.10,bb:0.20},{sb:0.25,bb:0.50},{sb:1.00,bb:2.00}];
 
-  const presetChips = currency === 'chips'
-    ? ['500','1000','2000','5000','10000']
-    : ['0.5','1','2','5','10'];
+  const presetChipsList = currency === 'chips'
+    ? [500,1000,2000,5000,10000]
+    : [0.5,1,2,5,10];
 
   return (
     <div style={{display:"flex",flexDirection:"column",gap:10}}>
@@ -504,11 +500,11 @@ function RoomSettings({ onConfirm, onCancel, playerName }: { onConfirm:(s:any)=>
         <div style={{fontSize:10,color:"#64748b",marginBottom:4,fontWeight:600,letterSpacing:1}}>BLINDS</div>
         <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:5}}>
           {presetBlinds.map(p=>(
-            <button key={p.sb} onClick={()=>{setSb(p.sb);setBb(p.bb);}}
+            <button key={p.sb} onClick={()=>{setSbN(p.sb);setBbN(p.bb);}}
               style={{padding:"4px 8px",borderRadius:6,fontSize:11,fontWeight:600,cursor:"pointer",
-                background:sb===p.sb?"rgba(99,102,241,0.3)":"rgba(30,41,59,0.5)",
-                border:sb===p.sb?"1px solid #6366f1":"1px solid rgba(255,255,255,0.06)",
-                color:sb===p.sb?"#a5b4fc":"#64748b"}}>
+                background:sbN===p.sb?"rgba(99,102,241,0.3)":"rgba(30,41,59,0.5)",
+                border:sbN===p.sb?"1px solid #6366f1":"1px solid rgba(255,255,255,0.06)",
+                color:sbN===p.sb?"#a5b4fc":"#64748b"}}>
               {p.sb}/{p.bb}
             </button>
           ))}
@@ -531,17 +527,17 @@ function RoomSettings({ onConfirm, onCancel, playerName }: { onConfirm:(s:any)=>
       <div>
         <div style={{fontSize:10,color:"#64748b",marginBottom:4,fontWeight:600,letterSpacing:1}}>STARTING STACK</div>
         <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:5}}>
-          {presetChips.map(p=>(
-            <button key={p} onClick={()=>setChips(p)}
+          {presetChipsList.map(p=>(
+            <button key={p} onClick={()=>setChipsN(p)}
               style={{padding:"4px 8px",borderRadius:6,fontSize:11,fontWeight:600,cursor:"pointer",
-                background:chips===p?"rgba(99,102,241,0.3)":"rgba(30,41,59,0.5)",
-                border:chips===p?"1px solid #6366f1":"1px solid rgba(255,255,255,0.06)",
-                color:chips===p?"#a5b4fc":"#64748b"}}>
+                background:chipsN===p?"rgba(99,102,241,0.3)":"rgba(30,41,59,0.5)",
+                border:chipsN===p?"1px solid #6366f1":"1px solid rgba(255,255,255,0.06)",
+                color:chipsN===p?"#a5b4fc":"#64748b"}}>
               {p}
             </button>
           ))}
         </div>
-        <input type="number" value={chips} onChange={e=>setChips(e.target.value)} min={currency==='chips'?100:0.1}
+        <input type="number" value={chipsN} onChange={e=>setChipsN(parseFloat(e.target.value)||1000)} min={currency==='chips'?100:0.1}
           style={{width:"100%",background:"rgba(30,41,59,0.7)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:7,padding:"6px 8px",fontSize:13,color:"#f1f5f9",outline:"none",boxSizing:"border-box",fontFamily:"monospace"}}/>
       </div>
 
@@ -549,7 +545,7 @@ function RoomSettings({ onConfirm, onCancel, playerName }: { onConfirm:(s:any)=>
       <div>
         <div style={{fontSize:10,color:"#64748b",marginBottom:4,fontWeight:600,letterSpacing:1}}>MAX PLAYERS</div>
         <div style={{display:"flex",gap:4}}>
-          {['2','3','4','5','6','8','9'].map(n=>(
+          {[2,3,4,5,6,8,9].map(n=>(
             <button key={n} onClick={()=>setMaxPlayers(n)}
               style={{flex:1,padding:"5px 0",borderRadius:6,fontSize:12,fontWeight:600,cursor:"pointer",
                 background:maxPlayers===n?"rgba(99,102,241,0.3)":"rgba(30,41,59,0.5)",
@@ -563,7 +559,7 @@ function RoomSettings({ onConfirm, onCancel, playerName }: { onConfirm:(s:any)=>
 
       <div style={{display:"flex",gap:8,marginTop:4}}>
         <button onClick={onCancel} style={{flex:1,padding:"9px 0",borderRadius:9,background:"transparent",border:"1px solid rgba(255,255,255,0.07)",color:"#64748b",fontWeight:700,fontSize:13,cursor:"pointer"}}>BACK</button>
-        <button onClick={()=>onConfirm({sb:toInternal(sb),bb:toInternal(bb),chips:toInternal(chips),currency,name:roomName,maxPlayers:parseInt(maxPlayers)})}
+        <button onClick={()=>onConfirm({sb:toInternal(sbN),bb:toInternal(bbN),chips:toInternal(chipsN),currency,name:roomName,maxPlayers})}
           style={{flex:2,padding:"9px 0",borderRadius:9,background:"#166534",border:"none",color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer"}}>CREATE ROOM →</button>
       </div>
     </div>
