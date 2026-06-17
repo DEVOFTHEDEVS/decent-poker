@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "dev:next": "next dev",
-    "dev:ws": "tsx server/dev.ts"
+    "dev:ws": "tsx server/dev.ts",
+    "start:ws": "tsx server/prod.ts",
+    "build:check": "next build"
   },
   "dependencies": {
     "next": "16.2.9",

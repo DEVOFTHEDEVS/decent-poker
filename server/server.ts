@@ -53,7 +53,14 @@ export class PokerServer {
       this.tables.set(cfg.id, table);
     }
 
-    this.wss = new WebSocketServer({ port });
+    // Create HTTP server so Railway healthcheck passes and WS upgrades work
+    const http = require("http");
+    const httpServer = http.createServer((_req: any, res: any) => {
+      res.writeHead(200, { "Content-Type": "text/plain" });
+      res.end("Decent Poker WS Server OK");
+    });
+    this.wss = new WebSocketServer({ server: httpServer });
+    httpServer.listen(port);
     this.wss.on("connection", (ws, req) => this.handleConnection(ws, req));
 
     // Heartbeat to detect dead connections
