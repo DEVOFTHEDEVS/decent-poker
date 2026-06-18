@@ -57,6 +57,7 @@ export default function TablePage() {
         </button>
 
         <p style={{ textAlign:"center", color:"#1e293b", fontSize:11, marginTop:14 }}>No wallet required · Play money only</p>
+        <p style={{ textAlign:"center", color:"#334155", fontSize:10, marginTop:4 }}>Link expires if the host closes their tab — ask for a new one</p>
       </div>
     </div>
   );

@@ -38,5 +38,18 @@ setTimeout(() => {
   });
 }, 2000);
 
+// Keep-alive ping every 4 minutes to prevent Railway from sleeping
+const RAILWAY_URL = process.env.RAILWAY_PUBLIC_DOMAIN 
+  ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` 
+  : null;
+if (RAILWAY_URL) {
+  setInterval(async () => {
+    try {
+      const r = await fetch(RAILWAY_URL);
+      console.log(`[KEEPALIVE] ping ${r.status}`);
+    } catch(e) { /* ignore */ }
+  }, 4 * 60 * 1000);
+}
+
 process.on("SIGTERM", () => { server.close(); process.exit(0); });
 process.on("SIGINT",  () => { server.close(); process.exit(0); });

@@ -196,7 +196,13 @@ function useWS(url: string) {
             if (typeof sessionStorage!=="undefined") { sessionStorage.setItem("current_table_id", m.table.id); if (m.currency) sessionStorage.setItem("table_currency", m.currency); }
           }
           else if (m.type==="cashout") { setTable(null); if (typeof sessionStorage!=="undefined") sessionStorage.removeItem("current_table_id"); }
-          else if (m.type==="error") { setError(m.message); s.send(JSON.stringify({type:"lobby"})); }
+          else if (m.type==="error") {
+            // Only show error if it's about room not found - otherwise clear and go to lobby
+            if (m.message?.includes("Room not found") || m.message?.includes("expired")) {
+              setError(m.message);
+            }
+            s.send(JSON.stringify({type:"lobby"}));
+          }
           else if (m.type==="kicked") { setTable(null); setError("You were removed from the table."); if (typeof sessionStorage!=="undefined") sessionStorage.removeItem("current_table_id"); }
         } catch(e) { console.error("WS parse error",e); }
       };
