@@ -48,7 +48,7 @@ export class PokerTable {
   private resultTimer: ReturnType<typeof setTimeout> | null; // tracks the resetHand timer
   private handId: number; // increments each hand, used to detect stale timers
   private runningOut: boolean; // true while runBoardOut is in progress
-  private advancing: boolean; // prevent re-entrant advance() calls
+  private betweenHands: boolean; // true from endHand until startHand begins
   private endHandTimer: ReturnType<typeof setTimeout> | null;
   private turnTimer: ReturnType<typeof setTimeout> | null;
   private handTimer: ReturnType<typeof setTimeout> | null;
@@ -83,7 +83,7 @@ export class PokerTable {
     this.resultTimer = null;
     this.handId = 0;
     this.runningOut = false;
-    this.advancing = false;
+    this.betweenHands = false;
     this.endHandTimer = null;
     this.turnTimer = null;
     this.handTimer = null;
@@ -112,7 +112,7 @@ export class PokerTable {
     this.emit();
 
     // Try to start a hand if we have enough players
-    if (!this.handActive && !this.handEnding) this.maybeStartHand();
+    this.maybeStartHand();
     return true;
   }
 
@@ -179,7 +179,8 @@ export class PokerTable {
     seat.chips += chips;
     seat.sittingOut = false; // unsit them so they get dealt in
     this.emit();
-    if (!this.handActive) this.maybeStartHand();
+    // maybeStartHand is blocked by betweenHands/handEnding flags
+    this.maybeStartHand();
     return true;
   }
 
@@ -373,7 +374,7 @@ export class PokerTable {
 
   private maybeStartHand(): void {
     const active = this.activePlayers();
-    if (active.length < 2 || this.handActive || this.handEnding) return;
+    if (active.length < 2 || this.handActive || this.handEnding || this.betweenHands) return;
     // Cancel any existing timer to prevent double-scheduling
     if (this.handTimer) { clearTimeout(this.handTimer); this.handTimer = null; }
     this.handTimer = setTimeout(() => this.startHand(), BETWEEN_HAND_DELAY_MS);
@@ -398,6 +399,8 @@ export class PokerTable {
     if (active.length < 2) return;
 
     this.lastResult = null; // clear previous result
+    this.runningOut = false; // reset runout flag for new hand
+    this.betweenHands = false; // now safe to start
     this.handId++; // new hand ID so stale resultTimer can detect it
     this.handActive = true;
     this.handNonce++;
@@ -788,6 +791,7 @@ export class PokerTable {
   private endHand(showdown: boolean): void {
     if (this.handEnding) return; // prevent double-call
     this.handEnding = true;
+    this.betweenHands = true; // block new hands until reset completes
     this.clearTurnTimer();
     if (this.botTimer) { clearTimeout(this.botTimer); this.botTimer = null; }
     if (this.endHandTimer) { clearTimeout(this.endHandTimer); this.endHandTimer = null; }
@@ -940,6 +944,8 @@ export class PokerTable {
 
   private resetHand(): void {
     this.handEnding = false;
+    this.runningOut = false;
+    // Keep betweenHands=true until startHand fires
     this.resultTimer = null;
     this.clearTurnTimer();
     if (this.botTimer) { clearTimeout(this.botTimer); this.botTimer = null; }
@@ -965,6 +971,7 @@ export class PokerTable {
     const { serverSeed, serverSeedHash } = generateServerSeed();
     this.serverSeed = serverSeed;
     this.serverSeedHash = serverSeedHash;
+    this.betweenHands = false; // now safe for new hand
     this.emit();
     this.maybeStartHand();
   }
