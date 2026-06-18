@@ -118,11 +118,16 @@ function SeatPod({ seat, isMe, isWinner, winCards, pos }: { seat: Seat; isMe: bo
   );
 }
 
-function EmptySeat({ pos, canSit, onClick }: {pos:{left:string;top:string};canSit:boolean;onClick?:()=>void}) {
+function EmptySeat({ pos, canSit, onClick, seatIdx }: {pos:{left:string;top:string};canSit:boolean;onClick?:(idx:number)=>void;seatIdx:number}) {
   return (
     <div style={{position:"absolute",left:pos.left,top:pos.top,transform:"translate(-50%,-50%)",zIndex:5}}>
-      {canSit?<button onClick={onClick} style={{width:40,height:40,borderRadius:"50%",background:"transparent",border:"2px dashed rgba(99,102,241,0.3)",color:"rgba(129,140,248,0.5)",fontSize:9,fontWeight:700,cursor:"pointer"}}>SIT</button>
-             :<div style={{width:30,height:30,borderRadius:"50%",border:"1px solid rgba(255,255,255,0.04)"}}/>}
+      {canSit
+        ? <button onClick={()=>onClick?.(seatIdx)}
+            style={{width:46,height:46,borderRadius:"50%",background:"rgba(99,102,241,0.1)",border:"2px dashed rgba(99,102,241,0.5)",color:"rgba(129,140,248,0.8)",fontSize:10,fontWeight:700,cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:1}}>
+            <span style={{fontSize:14}}>👤</span>
+            <span style={{fontSize:8}}>SIT</span>
+          </button>
+        : <div style={{width:30,height:30,borderRadius:"50%",border:"1px solid rgba(255,255,255,0.04)"}}/>}
     </div>
   );
 }
@@ -205,7 +210,7 @@ function useWS(url: string) {
 
 // ── Table View ────────────────────────────────────────────────────────────────
 function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy }: {
-  table: TableState; onAct:(a:any)=>void; onChat:(t:string)=>void; onLeave:()=>void; onSitDown?:()=>void; onRebuy:()=>void;
+  table: TableState; onAct:(a:any)=>void; onChat:(t:string)=>void; onLeave:()=>void; onSitDown?:(seatIdx?:number)=>void; onRebuy:()=>void;
 }) {
   const [chatText, setChatText] = useState("");
   const [chatOpen, setChatOpen] = useState(false);
@@ -344,7 +349,7 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy }: {
           <div style={{position:"absolute",inset:0,zIndex:10}}>
             {table.seats.map((seat,i)=>{
               const pos=seatPos(i);
-              if(!seat) return <EmptySeat key={i} pos={pos} canSit={!you&&!!onSitDown} onClick={onSitDown}/>;
+              if(!seat) return <EmptySeat key={i} pos={pos} canSit={!you&&!!onSitDown} onClick={(idx)=>onSitDown?.(idx)} seatIdx={i}/>;
               return <SeatPod key={i} seat={seat} isMe={i===myIndex} isWinner={!!(table.lastResult?.winners.some(w=>w.seat===i))} winCards={winCards??undefined} pos={pos}/>;
             })}
           </div>
@@ -420,7 +425,7 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy }: {
         ) : you && !you.inHand ? (
           <div style={{textAlign:"center",color:"#64748b",fontSize:12,padding:"8px 0"}}>⏳ Sitting out — dealt in next hand</div>
         ) : (
-          <div style={{textAlign:"center"}}>{onSitDown&&<button onClick={onSitDown} style={{padding:"10px 24px",background:"#4338ca",color:"#fff",border:"none",borderRadius:9,fontSize:14,fontWeight:700,cursor:"pointer"}}>SIT DOWN</button>}</div>
+          <div style={{textAlign:"center"}}>{onSitDown&&<button onClick={()=>onSitDown?.()} style={{padding:"10px 24px",background:"#4338ca",color:"#fff",border:"none",borderRadius:9,fontSize:14,fontWeight:700,cursor:"pointer"}}>SIT DOWN</button>}</div>
         )}
       </div>
 
@@ -773,6 +778,8 @@ export default function App() {
   const [view, setView] = useState<"home"|"table">("home");
   const [showRebuy, setShowRebuy] = useState(false);
   const [rebuyAmt, setRebuyAmt] = useState("1000");
+  const [selectedSeat, setSelectedSeat] = useState<number|null>(null);
+  const [sitConfirmAmt, setSitConfirmAmt] = useState("1000");
   // Always use the same seed from sessionStorage so playerId is stable
   const seed = (() => {
     if (typeof sessionStorage !== "undefined") {
@@ -784,6 +791,13 @@ export default function App() {
   })();
 
   useEffect(() => { if (table) setView("table"); }, [!!table]);
+
+  // Auto-prompt rebuy when player busts
+  useEffect(() => {
+    if (table?.you && table.you.chips <= 0 && !showRebuy) {
+      setTimeout(() => setShowRebuy(true), 2000); // wait 2s after bust to show
+    }
+  }, [table?.you?.chips]);
 
   // join_room is handled in onopen above
 
@@ -847,7 +861,7 @@ export default function App() {
           onAct={a=>send({type:"act",tableId:table.id,action:a})}
           onChat={t=>send({type:"chat",tableId:table.id,text:t})}
           onLeave={handleLeave}
-          onSitDown={()=>{}}
+          onSitDown={(seatIdx)=>{ setSelectedSeat(seatIdx??null); setSitConfirmAmt("1000"); }}
           onRebuy={()=>setShowRebuy(true)}
         />
       ) : (
@@ -857,6 +871,46 @@ export default function App() {
       )}
 
       {roomId && <ShareModal roomId={roomId} onClose={()=>setRoomId(null)}/>}
+
+      {/* Seat selection confirm modal */}
+      {selectedSeat !== null && !table?.you && (
+        <div onClick={()=>setSelectedSeat(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:100}}>
+          <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:440,background:"#0f172a",border:"1px solid rgba(255,255,255,0.08)",borderRadius:"20px 20px 0 0",padding:24}}>
+            <h2 style={{margin:"0 0 4px",fontSize:18,fontWeight:800,color:"#f1f5f9"}}>🪑 Sit at Seat {selectedSeat + 1}</h2>
+            <p style={{margin:"0 0 14px",color:"#64748b",fontSize:13}}>Choose your starting stack</p>
+            <div style={{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}>
+              {["500","1000","2000","5000","10000"].map(v=>(
+                <button key={v} onClick={()=>setSitConfirmAmt(v)} style={{padding:"6px 12px",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer",
+                  background:sitConfirmAmt===v?"rgba(67,56,202,0.4)":"rgba(30,41,59,0.6)",
+                  border:sitConfirmAmt===v?"1px solid #4338ca":"1px solid rgba(255,255,255,0.06)",
+                  color:sitConfirmAmt===v?"#a5b4fc":"#64748b"}}>{v}</button>
+              ))}
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14}}>
+              <input type="number" value={sitConfirmAmt} onChange={e=>setSitConfirmAmt(e.target.value)} min="1"
+                style={{flex:1,background:"rgba(30,41,59,0.8)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,padding:"11px 14px",fontSize:18,color:"#f1f5f9",fontFamily:"monospace",outline:"none"}}/>
+              <span style={{color:"#475569",fontWeight:600}}>chips</span>
+            </div>
+            <div style={{display:"flex",gap:9}}>
+              <button onClick={()=>setSelectedSeat(null)} style={{flex:1,padding:"11px 0",borderRadius:12,background:"transparent",border:"1px solid rgba(255,255,255,0.07)",color:"#64748b",fontWeight:700,fontSize:14,cursor:"pointer"}}>CANCEL</button>
+              <button onClick={()=>{
+                if (!table) return;
+                const chips = parseInt(sitConfirmAmt)||1000;
+                // For cash games use the normal join flow, for rooms use practice join
+                const currency = typeof sessionStorage!=="undefined" ? sessionStorage.getItem("table_currency")||"chips" : "chips";
+                if (currency === "sol") {
+                  // Cash game - need buy-in
+                  const sig = `dev_${Date.now()}_${seed.slice(0,8)}`;
+                  send({type:"join", tableId:table.id, lamports:chips, signature:sig, name:getPlayerName(), playerSeed:seed});
+                } else {
+                  send({type:"practice", tableId:table.id, name:getPlayerName(), playerSeed:seed, chips});
+                }
+                setSelectedSeat(null);
+              }} style={{flex:2,padding:"11px 0",borderRadius:12,background:"#4338ca",border:"none",color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer"}}>SIT DOWN</button>
+            </div>
+          </div>
+        </div>
+      )}
       {showRebuy && table && (
         <div onClick={()=>setShowRebuy(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:100}}>
           <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:440,background:"#0f172a",border:"1px solid rgba(255,255,255,0.08)",borderRadius:"20px 20px 0 0",padding:24}}>

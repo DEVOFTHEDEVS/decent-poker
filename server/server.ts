@@ -215,15 +215,20 @@ export class PokerServer {
       case "practice": {
         // Join a table with fake chips, no wallet needed
         const { tableId: ptid, name: pname, playerSeed: pseed } = msg;
+        const ptCustomChips = (msg as any).chips;
         const ptable = this.tables.get(ptid);
         if (!ptable) { this.send(client.ws, { type: "error", message: "Table not found" }); return; }
         const playerId = `practice_${pseed.slice(0, 12)}`;
         client.playerId = playerId;
         client.tableId = ptid;
         client.isSpectator = false;
-        const PRACTICE_CHIPS = 1000; // 1000 chips (1 chip = 1 lamport encoding)
-        const ok = ptable.sitDown(playerId, pname || "Player", PRACTICE_CHIPS, pseed);
-        if (!ok) { this.send(client.ws, { type: "error", message: "Table full" }); return; }
+        const PRACTICE_CHIPS = ptCustomChips || 1000;
+        // Check if already seated (rejoin)
+        const existingSeat = ptable.getClientState(playerId).you;
+        if (!existingSeat) {
+          const ok = ptable.sitDown(playerId, pname || "Player", PRACTICE_CHIPS, pseed);
+          if (!ok) { this.send(client.ws, { type: "error", message: "Table full" }); return; }
+        }
         this.send(client.ws, { type: "joined", table: ptable.getClientState(playerId) });
         break;
       }
