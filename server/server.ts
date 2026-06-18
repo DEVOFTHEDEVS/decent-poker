@@ -44,6 +44,7 @@ export class PokerServer {
     this.clients = new Map();
     this.dynamicRooms = new Map();
     this.disconnectTimers = new Map();
+    this.startWatchdog();
 
     // Initialize tables
     for (const cfg of TABLE_CONFIGS) {
@@ -415,6 +416,14 @@ export class PokerServer {
       if (info) { const t = this.tables.get(info.tableId); t?.destroy(); this.tables.delete(info.tableId); this.dynamicRooms.delete(roomId); }
     }, 7_200_000);
     return { roomId, table };
+  }
+
+  private startWatchdog(): void {
+    setInterval(() => {
+      for (const table of this.tables.values()) {
+        table.healthCheck();
+      }
+    }, 10_000);
   }
 
   close(): void {

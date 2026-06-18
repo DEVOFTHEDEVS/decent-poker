@@ -91,17 +91,19 @@ function PlayingCard({ card, small, highlight }: { card: Card|"back"|null; small
 }
 
 // ── Seat Pod ──────────────────────────────────────────────────────────────────
-function SeatPod({ seat, isMe, isWinner, winCards, pos }: { seat: Seat; isMe: boolean; isWinner: boolean; winCards?: Set<string>; pos: {left:string;top:string}; }) {
+function SeatPod({ seat, isMe, isWinner, winCards, pos, small }: { seat: Seat; isMe: boolean; isWinner: boolean; winCards?: Set<string>; pos: {left:string;top:string}; small?: boolean; }) {
   const showAction = seat.lastAction && Date.now()-seat.lastAction.ts < 3000;
+  const cardW = small ? 22 : 26;
+  const cardH = small ? 31 : 36;
   const aC: Record<string,string> = {FOLD:"#ef4444",CHECK:"#94a3b8","ALL-IN":"#f97316",CALL:"#6366f1",RAISE:"#8b5cf6",BET:"#8b5cf6",SB:"#64748b",BB:"#64748b"};
   return (
     <div style={{position:"absolute",left:pos.left,top:pos.top,transform:"translate(-50%,-50%)",display:"flex",flexDirection:"column",alignItems:"center",gap:2,zIndex:seat.isTurn?20:10,opacity:seat.folded?0.3:1,pointerEvents:"none"}}>
       {seat.bet>0&&<div style={{display:"flex",gap:1,marginBottom:1}}>{Array.from({length:Math.min(4,Math.max(1,Math.ceil(seat.bet/20000000)))}).map((_,i)=><div key={i} style={{width:7,height:7,borderRadius:"50%",background:"linear-gradient(#facc15,#ca8a04)"}}/>)}</div>}
       {showAction&&<div style={{padding:"1px 5px",borderRadius:3,background:aC[seat.lastAction!.label]||"#374151",color:"#fff",fontSize:8,fontWeight:700}}>{seat.lastAction!.label}</div>}
       <div style={{display:"flex",gap:2}}>
-        {seat.cards==="back"?<><PlayingCard card="back" small/><PlayingCard card="back" small/></>:
-         Array.isArray(seat.cards)?seat.cards.map((c,i)=><PlayingCard key={i} card={c} small highlight={winCards?.has(c.r+c.s)}/>):
-         <><div style={{width:28,height:40,borderRadius:5,border:"1px solid rgba(255,255,255,0.06)"}}/><div style={{width:28,height:40,borderRadius:5,border:"1px solid rgba(255,255,255,0.06)"}}/></>}
+        {seat.cards==="back"?<><PlayingCard card="back" small={true}/><PlayingCard card="back" small={true}/></>:
+         Array.isArray(seat.cards)?seat.cards.map((c,i)=><PlayingCard key={i} card={c} small={true} highlight={winCards?.has(c.r+c.s)}/>):
+         <><div style={{width:cardW,height:cardH,borderRadius:5,border:"1px solid rgba(255,255,255,0.06)"}}/><div style={{width:cardW,height:cardH,borderRadius:5,border:"1px solid rgba(255,255,255,0.06)"}}/></>}
       </div>
       <div style={{display:"flex",alignItems:"center",gap:4,padding:"3px 6px",borderRadius:6,background:seat.isTurn?"#1e1b4b":isWinner?"#052e16":isMe?"#1e293b":"rgba(15,23,42,0.9)",border:`1.5px solid ${seat.isTurn?"#818cf8":isWinner?"#34d399":isMe?"#475569":"rgba(255,255,255,0.08)"}`,boxShadow:seat.isTurn?"0 0 10px rgba(129,140,248,0.4)":isWinner?"0 0 10px rgba(52,211,153,0.4)":"none"}}>
         <div style={{width:18,height:18,borderRadius:"50%",background:isMe?"#3730a3":"#334155",display:"flex",alignItems:"center",justifyContent:"center",fontSize:8,fontWeight:700,flexShrink:0,position:"relative"}}>
@@ -283,9 +285,25 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy }: {
 
   function seatPos(idx: number) {
     const n = table.maxSeats;
-    const rotated = (idx-myIndex+n)%n;
-    const angle = (270+(360/n)*rotated)*Math.PI/180;
-    return { left:`${50+46*Math.cos(angle)}%`, top:`${50+43*Math.sin(angle)}%` };
+    const rotated = (idx - myIndex + n) % n;
+
+    // Pre-defined positions for each player count to avoid overlap
+    // Positions are percentages of the felt container (left%, top%)
+    // Optimized for oval felt with my seat always at bottom center
+    const positions: Record<number, [number, number][]> = {
+      2: [[50,15],[50,85]],
+      3: [[25,15],[75,15],[50,90]],
+      4: [[20,20],[80,20],[80,80],[20,80]],
+      5: [[50,8],[82,30],[68,82],[32,82],[18,30]],
+      6: [[50,8],[82,25],[82,72],[50,90],[18,72],[18,25]],
+      7: [[50,8],[78,18],[88,55],[68,85],[32,85],[12,55],[22,18]],
+      8: [[50,7],[72,10],[88,35],[88,65],[65,88],[35,88],[12,65],[12,35]],
+      9: [[50,7],[68,8],[84,25],[90,52],[75,82],[50,90],[25,82],[10,52],[16,25]],
+    };
+
+    const pts = positions[Math.min(n, 9)] || positions[9];
+    const [l, t] = pts[rotated] || [50, 50];
+    return { left: `${l}%`, top: `${t}%` };
   }
 
   const canRaise = you && !you.allIn ? you.maxRaiseTo > 0 && you.chips > 0 : false;
@@ -350,7 +368,7 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy }: {
             {table.seats.map((seat,i)=>{
               const pos=seatPos(i);
               if(!seat) return <EmptySeat key={i} pos={pos} canSit={!you&&!!onSitDown} onClick={(idx)=>onSitDown?.(idx)} seatIdx={i}/>;
-              return <SeatPod key={i} seat={seat} isMe={i===myIndex} isWinner={!!(table.lastResult?.winners.some(w=>w.seat===i))} winCards={winCards??undefined} pos={pos}/>;
+              return <SeatPod key={i} seat={seat} isMe={i===myIndex} isWinner={!!(table.lastResult?.winners.some(w=>w.seat===i))} winCards={winCards??undefined} pos={pos} small={table.maxSeats>=7}/>;
             })}
           </div>
           {/* Win banner */}
