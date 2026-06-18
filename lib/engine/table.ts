@@ -567,10 +567,13 @@ export class PokerTable {
       return;
     }
 
-    // All remaining players are all-in (or only one has chips but can't bet into all-ins)
-    // → run the board out automatically
-    const canStillBet = activePlayers.length >= 2 || 
-      (activePlayers.length === 1 && inHandPlayers.filter(s => s?.inHand && !s.folded && s?.allIn).length === 0);
+    // Run board out only when ALL players who can act have already acted
+    // i.e. no active player still needs to call/fold the all-in
+    const playersNeedingToAct = activePlayers.filter(s => {
+      const toCall = Math.max(0, this.currentBet - s!.bet);
+      return toCall > 0 || !s!.lastAction; // still needs to call or hasn't acted this street
+    });
+    const canStillBet = activePlayers.length >= 2 || playersNeedingToAct.length > 0;
     if (!canStillBet) {
       if (!this.endHandTimer) {
         if (this.street === "river" || this.board.length >= 5) {
