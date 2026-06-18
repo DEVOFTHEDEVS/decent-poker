@@ -188,7 +188,6 @@ function useWS(url: string) {
             setTable({...m.table});
             if (m.table?.you && typeof sessionStorage!=="undefined") {
               sessionStorage.setItem("current_table_id", m.table.id);
-              // Clear pending room join now that we're seated
               sessionStorage.removeItem("join_room_id");
               sessionStorage.removeItem("join_room_name");
             }

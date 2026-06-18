@@ -330,7 +330,9 @@ export class PokerServer {
           client.tableId = rjTableId;
           client.isSpectator = false;
           console.log(`[RECONNECT] ${foundId} rejoined ${rjTableId}`);
-          this.send(client.ws, { type: "joined", table: rjTable.getClientState(foundId) });
+          // Send current state immediately - captures mid-runout board state
+          const currency = this.dynamicRooms.get(rjTableId)?.currency || 'chips';
+          this.send(client.ws, { type: "joined", table: rjTable.getClientState(foundId), currency });
         } else {
           // Not found — send lobby instead of error so they can rejoin
           this.sendLobby(client.ws);
