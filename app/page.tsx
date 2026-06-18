@@ -469,7 +469,7 @@ function RoomSettings({ onConfirm, onCancel, playerName }: { onConfirm:(s:any)=>
   const [currency, setCurrency] = useState<'chips'|'usd'|'sol'>('chips');
   const [sbN, setSbN] = useState(5);
   const [bbN, setBbN] = useState(10);
-  const [chipsN, setChipsN] = useState(1000);
+  const [chipsN, setChipsN] = useState<number|string>(1000);
   const [maxPlayers, setMaxPlayers] = useState(6);
   const [roomName, setRoomName] = useState(`${playerName}'s Table`);
 
@@ -540,12 +540,12 @@ function RoomSettings({ onConfirm, onCancel, playerName }: { onConfirm:(s:any)=>
         <div style={{display:"flex",gap:6}}>
           <div style={{flex:1}}>
             <div style={{fontSize:9,color:"#475569",marginBottom:2}}>SB</div>
-            <input type="number" value={sbN} onChange={e=>setSbN(parseFloat(e.target.value)||1)} step={currency==='chips'?1:0.01} min={currency==='chips'?1:0.01}
+            <input type="number" value={sbN} onChange={e=>setSbN(e.target.value===''?0:parseFloat(e.target.value)||1)} step={currency==='chips'?1:0.01} min={currency==='chips'?1:0.01}
               style={{width:"100%",background:"rgba(30,41,59,0.7)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:7,padding:"6px 8px",fontSize:13,color:"#f1f5f9",outline:"none",boxSizing:"border-box",fontFamily:"monospace"}}/>
           </div>
           <div style={{flex:1}}>
             <div style={{fontSize:9,color:"#475569",marginBottom:2}}>BB</div>
-            <input type="number" value={bbN} onChange={e=>setBbN(parseFloat(e.target.value)||2)} step={currency==='chips'?1:0.01} min={currency==='chips'?2:0.02}
+            <input type="number" value={bbN} onChange={e=>setBbN(e.target.value===''?0:parseFloat(e.target.value)||2)} step={currency==='chips'?1:0.01} min={currency==='chips'?2:0.02}
               style={{width:"100%",background:"rgba(30,41,59,0.7)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:7,padding:"6px 8px",fontSize:13,color:"#f1f5f9",outline:"none",boxSizing:"border-box",fontFamily:"monospace"}}/>
           </div>
         </div>
@@ -556,7 +556,7 @@ function RoomSettings({ onConfirm, onCancel, playerName }: { onConfirm:(s:any)=>
         <div style={{fontSize:10,color:"#64748b",marginBottom:4,fontWeight:600,letterSpacing:1}}>STARTING STACK</div>
         <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:5}}>
           {presetChipsList.map(p=>(
-            <button key={p} onClick={()=>setChipsN(p)}
+            <button key={p} onClick={()=>setChipsN(p)} 
               style={{padding:"4px 8px",borderRadius:6,fontSize:11,fontWeight:600,cursor:"pointer",
                 background:chipsN===p?"rgba(99,102,241,0.3)":"rgba(30,41,59,0.5)",
                 border:chipsN===p?"1px solid #6366f1":"1px solid rgba(255,255,255,0.06)",
@@ -565,7 +565,7 @@ function RoomSettings({ onConfirm, onCancel, playerName }: { onConfirm:(s:any)=>
             </button>
           ))}
         </div>
-        <input type="number" value={chipsN} onChange={e=>setChipsN(parseFloat(e.target.value)||1000)} min={currency==='chips'?100:0.1}
+        <input type="number" value={chipsN} onChange={e=>setChipsN(e.target.value===''?'':parseFloat(e.target.value))} min={0.01} placeholder={currency==='chips'?'Enter chips...':'Enter amount...'}
           style={{width:"100%",background:"rgba(30,41,59,0.7)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:7,padding:"6px 8px",fontSize:13,color:"#f1f5f9",outline:"none",boxSizing:"border-box",fontFamily:"monospace"}}/>
       </div>
 
@@ -587,7 +587,7 @@ function RoomSettings({ onConfirm, onCancel, playerName }: { onConfirm:(s:any)=>
 
       <div style={{display:"flex",gap:8,marginTop:4}}>
         <button onClick={onCancel} style={{flex:1,padding:"9px 0",borderRadius:9,background:"transparent",border:"1px solid rgba(255,255,255,0.07)",color:"#64748b",fontWeight:700,fontSize:13,cursor:"pointer"}}>BACK</button>
-        <button onClick={()=>onConfirm({sb:toInternal(sbN),bb:toInternal(bbN),chips:toInternal(chipsN),currency,name:roomName,maxPlayers})}
+        <button onClick={()=>onConfirm({sb:toInternal(sbN),bb:toInternal(bbN),chips:toInternal(parseFloat(String(chipsN))||1000),currency,name:roomName,maxPlayers})}
           style={{flex:2,padding:"9px 0",borderRadius:9,background:"#166534",border:"none",color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer"}}>CREATE ROOM →</button>
       </div>
     </div>
@@ -604,7 +604,7 @@ const CASH_TABLES = [
   {id:"table6",name:"Custom",       sb:0,    bb:0,    min:0,   max:0,  color:"#64748b"},
 ];
 
-function HomePage({ onPractice, onRoom, onCash, lobby, connected }: { onPractice:()=>void; onRoom:(settings:{sb:number;bb:number;chips:number;currency:'chips'|'sol';name:string;maxPlayers:number})=>void; onCash:(id:string,l:number,customSb?:number,customBb?:number)=>void; lobby:LobbyTable[]; connected:boolean; }) {
+function HomePage({ onPractice, onRoom, onCash, lobby, connected }: { onPractice:()=>void; onRoom:(settings:{sb:number;bb:number;chips:number;currency:'chips'|'usd'|'sol';name:string;maxPlayers:number})=>void; onCash:(id:string,l:number,customSb?:number,customBb?:number)=>void; lobby:LobbyTable[]; connected:boolean; }) {
   const [name, setName] = useState(()=>typeof sessionStorage!=="undefined"?sessionStorage.getItem("player_name")||"":"");
   const [nameErr, setNameErr] = useState("");
   const [showRoom, setShowRoom] = useState(false);
@@ -794,7 +794,7 @@ export default function App() {
     sessionStorage.setItem("room_currency", settings.currency);
     sessionStorage.setItem("table_currency", settings.currency); // for displayAmount
     sessionStorage.setItem("room_chips_start", settings.chips.toString());
-    send({ type:"create_room", name:getPlayerName(), playerSeed:seed, sb:settings.sb, bb:settings.bb, maxPlayers:settings.maxPlayers, roomName:settings.name || `${getPlayerName()}'s Table` });
+    send({ type:"create_room", name:getPlayerName(), playerSeed:seed, sb:settings.sb, bb:settings.bb, maxPlayers:settings.maxPlayers, roomName:settings.name || `${getPlayerName()}'s Table`, chips:settings.chips, currency:settings.currency });
   }
 
   function handleCash(tableId: string, lamports: number) {
