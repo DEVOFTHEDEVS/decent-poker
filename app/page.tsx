@@ -161,12 +161,10 @@ function useWS(url: string) {
         const joinRoomId = typeof sessionStorage!=="undefined" ? sessionStorage.getItem("join_room_id") : null;
         const joinRoomName = typeof sessionStorage!=="undefined" ? sessionStorage.getItem("join_room_name") : null;
         if (joinRoomId && joinRoomName) {
-          sessionStorage.removeItem("join_room_id");
-          sessionStorage.removeItem("join_room_name");
-          // Use existing seed or create one - must be stable
+          // Keep join_room_id until we get a successful joined response
+          // so reconnects can retry
           let joinSeed = typeof sessionStorage!=="undefined" ? sessionStorage.getItem("player_seed") : null;
           if (!joinSeed) { joinSeed = genSeed(); if (typeof sessionStorage!=="undefined") sessionStorage.setItem("player_seed", joinSeed); }
-          // Pass currency stored by host
           const joinCurrency = typeof sessionStorage!=="undefined" ? (sessionStorage.getItem("room_currency") || "chips") : "chips";
           if (typeof sessionStorage!=="undefined") sessionStorage.setItem("table_currency", joinCurrency);
           s.send(JSON.stringify({ type:"join_room", roomId:joinRoomId, name:joinRoomName, playerSeed:joinSeed, currency:joinCurrency }));
@@ -188,7 +186,12 @@ function useWS(url: string) {
           if (m.type==="lobby") setLobby(m.tables);
           else if (m.type==="state"||m.type==="joined") {
             setTable({...m.table});
-            if (m.table?.you && typeof sessionStorage!=="undefined") sessionStorage.setItem("current_table_id", m.table.id);
+            if (m.table?.you && typeof sessionStorage!=="undefined") {
+              sessionStorage.setItem("current_table_id", m.table.id);
+              // Clear pending room join now that we're seated
+              sessionStorage.removeItem("join_room_id");
+              sessionStorage.removeItem("join_room_name");
+            }
             if (m.currency && typeof sessionStorage!=="undefined") sessionStorage.setItem("table_currency", m.currency);
           }
           else if (m.type==="room_created") {
