@@ -204,8 +204,8 @@ function useWS(url: string) {
 }
 
 // ── Table View ────────────────────────────────────────────────────────────────
-function TableView({ table, onAct, onChat, onLeave, onSitDown }: {
-  table: TableState; onAct:(a:any)=>void; onChat:(t:string)=>void; onLeave:()=>void; onSitDown?:()=>void;
+function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy }: {
+  table: TableState; onAct:(a:any)=>void; onChat:(t:string)=>void; onLeave:()=>void; onSitDown?:()=>void; onRebuy:()=>void;
 }) {
   const [chatText, setChatText] = useState("");
   const [chatOpen, setChatOpen] = useState(false);
@@ -769,6 +769,8 @@ const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "wss://decent-poker-production.
 export default function App() {
   const { connected, lobby, table, error, roomId, setRoomId, send, setTable } = useWS(WS_URL);
   const [view, setView] = useState<"home"|"table">("home");
+  const [showRebuy, setShowRebuy] = useState(false);
+  const [rebuyAmt, setRebuyAmt] = useState("1000");
   // Always use the same seed from sessionStorage so playerId is stable
   const seed = (() => {
     if (typeof sessionStorage !== "undefined") {
@@ -844,6 +846,7 @@ export default function App() {
           onChat={t=>send({type:"chat",tableId:table.id,text:t})}
           onLeave={handleLeave}
           onSitDown={()=>{}}
+          onRebuy={()=>setShowRebuy(true)}
         />
       ) : (
         <div style={{paddingTop:36}}>
@@ -852,6 +855,32 @@ export default function App() {
       )}
 
       {roomId && <ShareModal roomId={roomId} onClose={()=>setRoomId(null)}/>}
+      {showRebuy && table && (
+        <div onClick={()=>setShowRebuy(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:100}}>
+          <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:440,background:"#0f172a",border:"1px solid rgba(255,255,255,0.08)",borderRadius:"20px 20px 0 0",padding:24}}>
+            <h2 style={{margin:"0 0 4px",fontSize:18,fontWeight:800,color:"#f1f5f9"}}>💸 Rebuy</h2>
+            <p style={{margin:"0 0 14px",color:"#64748b",fontSize:13}}>Add chips to stay in the game</p>
+            <div style={{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}>
+              {["500","1000","2000","5000"].map(v=>(
+                <button key={v} onClick={()=>setRebuyAmt(v)} style={{padding:"6px 12px",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer",background:rebuyAmt===v?"rgba(67,56,202,0.4)":"rgba(30,41,59,0.6)",border:rebuyAmt===v?"1px solid #4338ca":"1px solid rgba(255,255,255,0.06)",color:rebuyAmt===v?"#a5b4fc":"#64748b"}}>{v}</button>
+              ))}
+            </div>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14}}>
+              <input type="number" value={rebuyAmt} onChange={e=>setRebuyAmt(e.target.value)} min="1"
+                style={{flex:1,background:"rgba(30,41,59,0.8)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,padding:"11px 14px",fontSize:18,color:"#f1f5f9",fontFamily:"monospace",outline:"none"}}/>
+              <span style={{color:"#475569",fontWeight:600}}>chips</span>
+            </div>
+            <div style={{display:"flex",gap:9}}>
+              <button onClick={()=>setShowRebuy(false)} style={{flex:1,padding:"11px 0",borderRadius:12,background:"transparent",border:"1px solid rgba(255,255,255,0.07)",color:"#64748b",fontWeight:700,fontSize:14,cursor:"pointer"}}>CANCEL</button>
+              <button onClick={()=>{
+                const chips = parseInt(rebuyAmt)||1000;
+                send({type:"rebuy", tableId:table.id, chips, playerSeed:seed});
+                setShowRebuy(false);
+              }} style={{flex:2,padding:"11px 0",borderRadius:12,background:"#4338ca",border:"none",color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer"}}>ADD CHIPS</button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

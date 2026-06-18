@@ -162,6 +162,17 @@ export class PokerTable {
     return chips;
   }
 
+  /** Add chips to a player's stack (rebuy) */
+  rebuy(playerId: string, chips: number): boolean {
+    const seat = this.seats.find(s => s?.id === playerId);
+    if (!seat) return false;
+    seat.chips += chips;
+    seat.sittingOut = false; // unsit them so they get dealt in
+    this.emit();
+    if (!this.handActive) this.maybeStartHand();
+    return true;
+  }
+
   /** Add chat message */
   chat_(playerId: string, text: string): void {
     const seat = this.seats.findIndex(s => s?.id === playerId);

@@ -294,6 +294,15 @@ export class PokerServer {
         break;
       }
 
+      case "rebuy": {
+        if (!client.playerId || !client.tableId) return;
+        const table = this.tables.get(client.tableId);
+        if (!table) return;
+        const rebuyChips = (msg as any).chips || 1000;
+        table.rebuy(client.playerId, rebuyChips);
+        break;
+      }
+
       case "cashout": {
         if (!client.playerId || !client.tableId) return;
         const table = this.tables.get(client.tableId);
