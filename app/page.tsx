@@ -10,12 +10,21 @@ interface LobbyTable { id: string; name: string; seated: number; maxSeats: numbe
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 const sol = (l: number) => (l / 1e9).toFixed(3);
-// Smart display: chip mode if value < 1_000_000 (1 chip = 1 lamport encoding)
-function displayAmount(l: number): string {
-  if (l > 0 && l < 1_000_000) { // chip mode: values are tiny (1-50000 range)
+// Display amount based on explicit mode
+// chip mode: values stored as plain numbers (1 chip = 1 lamport)
+// sol mode: values stored as lamports (1 SOL = 1_000_000_000)
+// usd mode: same as chip mode but shows $ prefix
+function displayAmount(l: number, mode?: string): string {
+  const m = mode || (typeof sessionStorage !== "undefined" ? sessionStorage.getItem("table_currency") : null) || "sol";
+  if (m === "chips") {
     return l >= 1000 ? l.toLocaleString() : l.toString();
   }
-  return (l / 1e9).toFixed(3) + ' SOL';
+  if (m === "usd") {
+    const v = l / 100; // 1 cent = 1 lamport in USD mode
+    return "$" + (v >= 100 ? v.toFixed(0) : v.toFixed(2));
+  }
+  // SOL mode
+  return (l / 1e9).toFixed(3);
 }
 const SUIT_COLOR: Record<string, string> = { "♥":"#dc2626","♦":"#dc2626","♠":"#1e293b","♣":"#1e293b" };
 function genSeed() { const a = new Uint8Array(16); if (typeof crypto!=="undefined") crypto.getRandomValues(a); return Array.from(a).map(b=>b.toString(16).padStart(2,"0")).join(""); }
@@ -150,7 +159,10 @@ function useWS(url: string) {
           // Use existing seed or create one - must be stable
           let joinSeed = typeof sessionStorage!=="undefined" ? sessionStorage.getItem("player_seed") : null;
           if (!joinSeed) { joinSeed = genSeed(); if (typeof sessionStorage!=="undefined") sessionStorage.setItem("player_seed", joinSeed); }
-          s.send(JSON.stringify({ type:"join_room", roomId:joinRoomId, name:joinRoomName, playerSeed:joinSeed }));
+          // Pass currency stored by host
+          const joinCurrency = typeof sessionStorage!=="undefined" ? (sessionStorage.getItem("room_currency") || "chips") : "chips";
+          if (typeof sessionStorage!=="undefined") sessionStorage.setItem("table_currency", joinCurrency);
+          s.send(JSON.stringify({ type:"join_room", roomId:joinRoomId, name:joinRoomName, playerSeed:joinSeed, currency:joinCurrency }));
           return;
         }
 
@@ -170,10 +182,11 @@ function useWS(url: string) {
           else if (m.type==="state"||m.type==="joined") {
             setTable({...m.table});
             if (m.table?.you && typeof sessionStorage!=="undefined") sessionStorage.setItem("current_table_id", m.table.id);
+            if (m.currency && typeof sessionStorage!=="undefined") sessionStorage.setItem("table_currency", m.currency);
           }
           else if (m.type==="room_created") {
             setRoomId(m.roomId); setTable({...m.table});
-            if (typeof sessionStorage!=="undefined") { sessionStorage.setItem("current_table_id", m.table.id); sessionStorage.setItem("player_seed", (window as any).__playerSeed||""); }
+            if (typeof sessionStorage!=="undefined") { sessionStorage.setItem("current_table_id", m.table.id); if (m.currency) sessionStorage.setItem("table_currency", m.currency); }
           }
           else if (m.type==="cashout") { setTable(null); if (typeof sessionStorage!=="undefined") sessionStorage.removeItem("current_table_id"); }
           else if (m.type==="error") { setError(m.message); s.send(JSON.stringify({type:"lobby"})); }
@@ -267,8 +280,8 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown }: {
     return { left:`${50+46*Math.cos(angle)}%`, top:`${50+43*Math.sin(angle)}%` };
   }
 
-  const canRaise = you ? you.maxRaiseTo > table.currentBet : false;
-  const rMin = you ? Math.min(you.minRaiseTo, you.maxRaiseTo) : 0;
+  const canRaise = you && !you.allIn ? you.maxRaiseTo > 0 && you.chips > 0 : false;
+  const rMin = you ? Math.max(1, Math.min(you.minRaiseTo, you.maxRaiseTo)) : 0;
   const rMax = you ? you.maxRaiseTo : 0;
   const presets = [
     {l:"Min",v:rMin},
@@ -366,9 +379,12 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown }: {
               <button onClick={()=>onAct({type:"fold"})} style={{flex:1,padding:"14px 0",background:"rgba(180,29,29,0.7)",border:"2px solid #dc2626",borderRadius:12,color:"#fecaca",fontWeight:800,fontSize:16,cursor:"pointer"}}>FOLD</button>
               {you.canCheck
                 ? <button onClick={()=>onAct({type:"check"})} style={{flex:1,padding:"14px 0",background:"rgba(51,65,85,0.8)",border:"2px solid #475569",borderRadius:12,color:"#e2e8f0",fontWeight:800,fontSize:16,cursor:"pointer"}}>CHECK</button>
-                : <button onClick={()=>onAct({type:"call"})} style={{flex:1,padding:"14px 0",background:"rgba(67,56,202,0.7)",border:"2px solid #6366f1",borderRadius:12,color:"#e0e7ff",fontWeight:800,fontSize:16,cursor:"pointer"}}>CALL {sol(you.toCall)}</button>}
+                : <button onClick={()=>onAct({type:"call"})} style={{flex:1,padding:"14px 0",background:"rgba(67,56,202,0.7)",border:"2px solid #6366f1",borderRadius:12,color:"#e0e7ff",fontWeight:800,fontSize:16,cursor:"pointer"}}>CALL {displayAmount(you.toCall)}</button>}
             </div>
             {/* Raise */}
+            {you && !you.allIn && you.chips > 0 && you.toCall >= you.chips && (
+              <button onClick={()=>onAct({type:"allin"})} style={{width:"100%",padding:"12px 0",background:"rgba(249,115,22,0.7)",border:"2px solid #f97316",borderRadius:12,color:"#fed7aa",fontWeight:800,fontSize:15,cursor:"pointer"}}>🔥 ALL-IN {displayAmount(you.chips)}</button>
+            )}
             {canRaise&&(
               <div style={{display:"flex",flexDirection:"column",gap:5}}>
                 <div style={{display:"flex",gap:3}}>
@@ -376,8 +392,8 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown }: {
                 </div>
                 <div style={{display:"flex",gap:8,alignItems:"center"}}>
                   <input type="range" min={rMin} max={rMax} step={Math.max(1,Math.floor(bb/2))} value={raiseAmt} onChange={e=>setRaiseAmt(+e.target.value)} style={{flex:1,accentColor:"#7c3aed"}}/>
-                  <button onClick={()=>onAct({type:raiseAmt>=rMax?"allin":"raise",amount:raiseAmt})} style={{padding:"10px 14px",background:"rgba(124,58,237,0.7)",border:"2px solid #8b5cf6",borderRadius:10,color:"#ede9fe",fontWeight:800,fontSize:13,cursor:"pointer",whiteSpace:"nowrap"}}>
-                    {raiseAmt>=rMax?"ALL-IN":"RAISE"} {displayAmount(raiseAmt)}
+                  <button onClick={()=>onAct({type:raiseAmt>=rMax?"allin":"raise",amount:raiseAmt})} style={{padding:"10px 14px",background:raiseAmt>=rMax?"rgba(249,115,22,0.7)":"rgba(124,58,237,0.7)",border:`2px solid ${raiseAmt>=rMax?"#f97316":"#8b5cf6"}`,borderRadius:10,color:"#ede9fe",fontWeight:800,fontSize:13,cursor:"pointer",whiteSpace:"nowrap"}}>
+                    {raiseAmt>=rMax?"🔥 ALL-IN":"RAISE"} {displayAmount(raiseAmt)}
                   </button>
                 </div>
               </div>
@@ -450,7 +466,7 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown }: {
 
 // ── Room Settings ────────────────────────────────────────────────────────────
 function RoomSettings({ onConfirm, onCancel, playerName }: { onConfirm:(s:any)=>void; onCancel:()=>void; playerName:string }) {
-  const [currency, setCurrency] = useState<'chips'|'sol'>('chips');
+  const [currency, setCurrency] = useState<'chips'|'usd'|'sol'>('chips');
   const [sbN, setSbN] = useState(5);
   const [bbN, setBbN] = useState(10);
   const [chipsN, setChipsN] = useState(1000);
@@ -458,15 +474,21 @@ function RoomSettings({ onConfirm, onCancel, playerName }: { onConfirm:(s:any)=>
   const [roomName, setRoomName] = useState(`${playerName}'s Table`);
 
   function toInternal(n: number) {
-    return currency === 'sol' ? Math.round(n * 1e9) : n; // chips: 1:1, sol: lamports
+    if (currency === 'sol') return Math.round(n * 1e9);
+    if (currency === 'usd') return Math.round(n * 100); // 1 cent = 1 lamport
+    return Math.round(n); // chips: 1:1
   }
 
   const presetBlinds = currency === 'chips'
     ? [{sb:1,bb:2},{sb:5,bb:10},{sb:10,bb:20},{sb:25,bb:50},{sb:50,bb:100}]
+    : currency === 'usd'
+    ? [{sb:0.25,bb:0.50},{sb:0.50,bb:1},{sb:1,bb:2},{sb:2,bb:5},{sb:5,bb:10}]
     : [{sb:0.01,bb:0.02},{sb:0.05,bb:0.10},{sb:0.10,bb:0.20},{sb:0.25,bb:0.50},{sb:1.00,bb:2.00}];
 
   const presetChipsList = currency === 'chips'
     ? [500,1000,2000,5000,10000]
+    : currency === 'usd'
+    ? [10,20,50,100,200]
     : [0.5,1,2,5,10];
 
   return (
@@ -477,13 +499,18 @@ function RoomSettings({ onConfirm, onCancel, playerName }: { onConfirm:(s:any)=>
       <div>
         <div style={{fontSize:10,color:"#64748b",marginBottom:4,fontWeight:600,letterSpacing:1}}>CURRENCY</div>
         <div style={{display:"flex",gap:6}}>
-          {(['chips','sol'] as const).map(cur=>(
-            <button key={cur} onClick={()=>{setCurrency(cur);setSbN(cur==='chips'?5:0.05);setBbN(cur==='chips'?10:0.10);setChipsN(cur==='chips'?1000:1);}}
+          {(['chips','usd','sol'] as const).map(cur=>(
+            <button key={cur} onClick={()=>{
+              setCurrency(cur);
+              if(cur==='chips'){setSbN(5);setBbN(10);setChipsN(1000);}
+              else if(cur==='usd'){setSbN(0.5);setBbN(1);setChipsN(50);}
+              else{setSbN(0.05);setBbN(0.10);setChipsN(1);}
+            }}
               style={{flex:1,padding:"7px 0",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",
                 background:currency===cur?"rgba(99,102,241,0.3)":"rgba(30,41,59,0.6)",
                 border:currency===cur?"1px solid #6366f1":"1px solid rgba(255,255,255,0.08)",
                 color:currency===cur?"#a5b4fc":"#64748b"}}>
-              {cur==='chips'?'🎰 Play Chips':'◎ SOL'}
+              {cur==='chips'?'🎰 Chips':cur==='usd'?'💵 USD':'◎ SOL'}
             </button>
           ))}
         </div>
@@ -758,12 +785,14 @@ export default function App() {
   function handlePractice() {
     sessionStorage.setItem("player_seed", seed);
     sessionStorage.setItem("current_table_id", "table1");
+    sessionStorage.setItem("table_currency", "chips");
     send({ type:"practice", tableId:"table1", name:getPlayerName(), playerSeed:seed });
   }
 
   function handleRoom(settings: {sb:number;bb:number;chips:number;currency:string;name:string;maxPlayers:number}) {
     sessionStorage.setItem("player_seed", seed);
     sessionStorage.setItem("room_currency", settings.currency);
+    sessionStorage.setItem("table_currency", settings.currency); // for displayAmount
     sessionStorage.setItem("room_chips_start", settings.chips.toString());
     send({ type:"create_room", name:getPlayerName(), playerSeed:seed, sb:settings.sb, bb:settings.bb, maxPlayers:settings.maxPlayers, roomName:settings.name || `${getPlayerName()}'s Table` });
   }
@@ -771,6 +800,7 @@ export default function App() {
   function handleCash(tableId: string, lamports: number) {
     sessionStorage.setItem("player_seed", seed);
     sessionStorage.setItem("current_table_id", tableId);
+    sessionStorage.setItem("table_currency", "sol");
     const sig = `dev_${Date.now()}_${seed.slice(0,8)}`;
     send({ type:"join", tableId, lamports, signature:sig, name:getPlayerName(), playerSeed:seed });
   }
