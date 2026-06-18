@@ -98,11 +98,17 @@ export class PokerTable {
     if (emptySeat === -1) return false; // full
 
     this.playerSeeds.set(playerId, playerSeed);
-    this.seats[emptySeat] = this.makeSeat(playerId, name, chips, avatarUrl);
+    const seat = this.makeSeat(playerId, name, chips, avatarUrl);
+    // If a hand is in progress, sit them out until next hand
+    if (this.handActive || this.handEnding) {
+      seat.sittingOut = true;
+      seat.inHand = false;
+    }
+    this.seats[emptySeat] = seat;
     this.emit();
 
     // Try to start a hand if we have enough players
-    if (!this.handActive) this.maybeStartHand();
+    if (!this.handActive && !this.handEnding) this.maybeStartHand();
     return true;
   }
 
@@ -381,6 +387,12 @@ export class PokerTable {
 
     this.lastResult = null; // clear previous result
     this.handId++; // new hand ID so stale resultTimer can detect it
+    // Unsit anyone who was waiting for next hand
+    for (const seat of this.seats) {
+      if (seat && seat.sittingOut && seat.chips > 0) {
+        seat.sittingOut = false;
+      }
+    }
     this.handActive = true;
     this.handNonce++;
     this.board = [];

@@ -218,6 +218,8 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy }: {
   const beeped = useRef<Set<number>>(new Set());
 
   const myIndex = table.you?.seat ?? 0;
+  // Stable seat reference - don't let join events affect current player's state
+  const youSeat = table.you;
   const you = table.you;
   const bb = table.bb;
   const pot = table.pot;
