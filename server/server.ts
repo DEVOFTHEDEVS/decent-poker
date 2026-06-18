@@ -278,24 +278,32 @@ export class PokerServer {
       }
 
       case "rejoin": {
-        // Client reconnected and wants to resume their session
         const { tableId: rjTableId, playerSeed: rjSeed } = msg;
-        // Cancel any pending disconnect timer for this player
-        const rjPlayerId2 = `player_${rjSeed.slice(0, 12)}`;
-        const pendingTimer = this.disconnectTimers.get(rjPlayerId2);
-        if (pendingTimer) { clearTimeout(pendingTimer); this.disconnectTimers.delete(rjPlayerId2); console.log(`[RECONNECT] ${rjPlayerId2} reconnected in time`); }
         const rjTable = this.tables.get(rjTableId);
-        if (!rjTable) { this.send(client.ws, { type: "error", message: "Table not found" }); return; }
-        const rjPlayerId = `player_${rjSeed.slice(0, 12)}`;
-        const rjSeat = rjTable.getClientState(rjPlayerId);
-        if (rjSeat.you) {
-          // Player is still seated
-          client.playerId = rjPlayerId;
+        if (!rjTable) { this.send(client.ws, { type: "lobby" }); this.sendLobby(client.ws); return; }
+
+        // Try all possible playerId prefixes (practice_, room_, player_)
+        const prefixes = ["practice", "room", "player"];
+        let foundId: string | null = null;
+        for (const prefix of prefixes) {
+          const pid = `${prefix}_${rjSeed.slice(0, 12)}`;
+          // Cancel any pending disconnect timer
+          const pendingTimer = this.disconnectTimers.get(pid);
+          if (pendingTimer) { clearTimeout(pendingTimer); this.disconnectTimers.delete(pid); }
+          const state = rjTable.getClientState(pid);
+          if (state.you) { foundId = pid; break; }
+        }
+
+        if (foundId) {
+          client.playerId = foundId;
           client.tableId = rjTableId;
           client.isSpectator = false;
-          this.send(client.ws, { type: "joined", table: rjTable.getClientState(rjPlayerId) });
+          console.log(`[RECONNECT] ${foundId} rejoined ${rjTableId}`);
+          this.send(client.ws, { type: "joined", table: rjTable.getClientState(foundId) });
         } else {
-          this.send(client.ws, { type: "error", message: "Session expired" });
+          // Not found — send lobby instead of error so they can rejoin
+          this.sendLobby(client.ws);
+          this.send(client.ws, { type: "lobby", tables: [] });
         }
         break;
       }
