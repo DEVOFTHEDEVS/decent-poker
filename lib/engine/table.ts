@@ -377,22 +377,24 @@ export class PokerTable {
 
   private startHand(): void {
     this.handTimer = null;
-    const active = this.activePlayers();
-    if (active.length < 2) return;
 
     // Cancel any pending timers from previous hand
     if (this.botTimer) { clearTimeout(this.botTimer); this.botTimer = null; }
     if (this.endHandTimer) { clearTimeout(this.endHandTimer); this.endHandTimer = null; }
     if (this.resultTimer) { clearTimeout(this.resultTimer); this.resultTimer = null; }
 
-    this.lastResult = null; // clear previous result
-    this.handId++; // new hand ID so stale resultTimer can detect it
-    // Unsit anyone who was waiting for next hand
+    // Unsit waiting players BEFORE calling activePlayers so they get dealt in
     for (const seat of this.seats) {
       if (seat && seat.sittingOut && seat.chips > 0) {
         seat.sittingOut = false;
       }
     }
+
+    const active = this.activePlayers();
+    if (active.length < 2) return;
+
+    this.lastResult = null; // clear previous result
+    this.handId++; // new hand ID so stale resultTimer can detect it
     this.handActive = true;
     this.handNonce++;
     this.board = [];
