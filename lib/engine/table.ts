@@ -994,6 +994,16 @@ export class PokerTable {
     if (this.onStateChange) this.onStateChange(this);
   }
 
+  /** Watchdog: detect and recover stuck hands */
+  healthCheck(): void {
+    if (!this.handActive || this.handEnding) return;
+    const active = this.seats.filter(s => s?.inHand && !s.folded && !s.allIn);
+    if (this.actionSeat === null && active.length >= 1) {
+      console.log("[WATCHDOG] Stuck hand detected, recovering...");
+      this.endHand(false);
+    }
+  }
+
   destroy(): void {
     this.clearTurnTimer();
     if (this.handTimer) clearTimeout(this.handTimer);
