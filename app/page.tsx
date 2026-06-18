@@ -574,13 +574,13 @@ function RoomSettings({ onConfirm, onCancel, playerName }: { onConfirm:(s:any)=>
   const presetBlinds = currency === 'chips'
     ? [{sb:1,bb:2},{sb:5,bb:10},{sb:10,bb:20},{sb:25,bb:50},{sb:50,bb:100}]
     : currency === 'usd'
-    ? [{sb:0.25,bb:0.50},{sb:0.50,bb:1},{sb:1,bb:2},{sb:2,bb:5},{sb:5,bb:10}]
+    ? [{sb:0.05,bb:0.10},{sb:0.10,bb:0.25},{sb:0.25,bb:0.50},{sb:0.50,bb:1},{sb:1,bb:2},{sb:2,bb:5},{sb:5,bb:10},{sb:10,bb:20}]
     : [{sb:0.01,bb:0.02},{sb:0.05,bb:0.10},{sb:0.10,bb:0.20},{sb:0.25,bb:0.50},{sb:1.00,bb:2.00}];
 
   const presetChipsList = currency === 'chips'
     ? [500,1000,2000,5000,10000]
     : currency === 'usd'
-    ? [10,20,50,100,200]
+    ? [10,20,50,100,200,500]
     : [0.5,1,2,5,10];
 
   return (
@@ -595,7 +595,7 @@ function RoomSettings({ onConfirm, onCancel, playerName }: { onConfirm:(s:any)=>
             <button key={cur} onClick={()=>{
               setCurrency(cur);
               if(cur==='chips'){setSbN(5);setBbN(10);setChipsN(1000);}
-              else if(cur==='usd'){setSbN(0.5);setBbN(1);setChipsN(50);}
+              else if(cur==='usd'){setSbN(0.25);setBbN(0.50);setChipsN(50);}
               else{setSbN(0.05);setBbN(0.10);setChipsN(1);}
             }}
               style={{flex:1,padding:"7px 0",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",
