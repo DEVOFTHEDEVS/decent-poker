@@ -214,6 +214,7 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown }: {
   const [autoAction, setAutoAction] = useState<"checkFold"|"callAny"|"check"|null>(null);
   const chatRef = useRef<HTMLDivElement>(null);
   const prevTable = useRef<TableState|null>(null);
+  const lastCompletedNonce = useRef<number>(-1);
   const beeped = useRef<Set<number>>(new Set());
 
   const myIndex = table.you?.seat ?? 0;
