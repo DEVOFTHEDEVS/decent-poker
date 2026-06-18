@@ -419,7 +419,7 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy }: {
 
       {/* ACTION PANEL */}
       <div style={{padding:"8px 10px",background:"rgba(15,23,42,0.98)",borderTop:"1px solid rgba(255,255,255,0.07)",flexShrink:0}}>
-        {you?.myTurn ? (
+        {you?.myTurn && !you.allIn ? (
           <div style={{display:"flex",flexDirection:"column",gap:6}}>
             {/* Timer */}
             <div style={{display:"flex",alignItems:"center",gap:8}}>
@@ -468,6 +468,8 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy }: {
               ))}
             </div>
           </div>
+        ) : you?.allIn && table.handActive ? (
+          <div style={{textAlign:"center",color:"#f97316",fontSize:13,padding:"8px 0",fontWeight:600}}>🔥 All-in — waiting for board…</div>
         ) : you && you.chips <= 0 && !table.handActive ? (
           <div style={{display:"flex",flexDirection:"column",gap:8,alignItems:"center",padding:"8px 0"}}>
             <div style={{fontSize:22}}>💸</div>

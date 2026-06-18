@@ -543,8 +543,8 @@ export class PokerTable {
     }
 
     player.isTurn = false;
-    this.advance();
     this.emit();
+    this.advance();
     return { ok: true };
   }
 
