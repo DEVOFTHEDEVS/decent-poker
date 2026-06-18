@@ -249,9 +249,13 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy }: {
   const chatRef = useRef<HTMLDivElement>(null);
   const prevTable = useRef<TableState|null>(null);
   const lastCompletedNonce = useRef<number>(-1);
+  const lastKnownChips = useRef<number>(-1);
+  const wasSeated = useRef<boolean>(false);
   const beeped = useRef<Set<number>>(new Set());
 
   const myIndex = table.you?.seat ?? 0;
+  // Track if we were seated and busted (for reconnect scenarios)
+  if (table.you) { lastKnownChips.current = table.you.chips; wasSeated.current = true; }
   // Stable seat reference - don't let join events affect current player's state
   const youSeat = table.you;
   const you = table.you;
@@ -491,9 +495,7 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy }: {
               ))}
             </div>
           </div>
-        ) : you?.allIn && table.handActive ? (
-          <div style={{textAlign:"center",color:"#f97316",fontSize:13,padding:"8px 0",fontWeight:600}}>🔥 All-in — waiting for board…</div>
-        ) : you && you.chips <= 0 && !table.handActive ? (
+        ) : ((you && you.chips <= 0) || (!you && wasSeated.current && lastKnownChips.current <= 0)) && !table.handActive ? (
           <div style={{display:"flex",flexDirection:"column",gap:8,alignItems:"center",padding:"8px 0"}}>
             <div style={{fontSize:22}}>💸</div>
             <div style={{color:"#ef4444",fontWeight:800,fontSize:15}}>You're busted!</div>
@@ -502,6 +504,8 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy }: {
               <button onClick={()=>onLeave()} style={{flex:1,padding:"13px 0",background:"rgba(127,29,29,0.4)",border:"1px solid #7f1d1d",borderRadius:12,color:"#fca5a5",fontWeight:700,fontSize:13,cursor:"pointer"}}>LEAVE</button>
             </div>
           </div>
+        ) : you?.allIn && table.handActive && !table.lastResult ? (
+          <div style={{textAlign:"center",color:"#f97316",fontSize:13,padding:"8px 0",fontWeight:600}}>🔥 All-in — waiting for board…</div>
         ) : you && !you.inHand ? (
           <div style={{textAlign:"center",color:"#64748b",fontSize:12,padding:"8px 0"}}>⏳ Sitting out — dealt in next hand</div>
         ) : (
