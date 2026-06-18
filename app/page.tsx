@@ -306,7 +306,7 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy }: {
     return { left: `${l}%`, top: `${t}%` };
   }
 
-  const canRaise = you && !you.allIn ? you.maxRaiseTo > 0 && you.chips > 0 : false;
+  const canRaise = you && !you.allIn && !you.allIn ? you.chips > 0 && you.maxRaiseTo > you.toCall : false;
   const rMin = you ? Math.max(1, Math.min(you.minRaiseTo, you.maxRaiseTo)) : 0;
   const rMax = you ? you.maxRaiseTo : 0;
   const presets = [
@@ -408,8 +408,8 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy }: {
                 : <button onClick={()=>onAct({type:"call"})} style={{flex:1,padding:"14px 0",background:"rgba(67,56,202,0.7)",border:"2px solid #6366f1",borderRadius:12,color:"#e0e7ff",fontWeight:800,fontSize:16,cursor:"pointer"}}>CALL {displayAmount(you.toCall)}</button>}
             </div>
             {/* Raise */}
-            {you && !you.allIn && you.chips > 0 && you.toCall >= you.chips && (
-              <button onClick={()=>onAct({type:"allin"})} style={{width:"100%",padding:"12px 0",background:"rgba(249,115,22,0.7)",border:"2px solid #f97316",borderRadius:12,color:"#fed7aa",fontWeight:800,fontSize:15,cursor:"pointer"}}>🔥 ALL-IN {displayAmount(you.chips)}</button>
+            {you && !you.allIn && you.chips > 0 && you.toCall > 0 && you.toCall >= you.chips && (
+              <button onClick={()=>onAct({type:"allin"})} style={{width:"100%",padding:"14px 0",background:"rgba(249,115,22,0.7)",border:"2px solid #f97316",borderRadius:12,color:"#fed7aa",fontWeight:800,fontSize:15,cursor:"pointer"}}>🔥 ALL-IN — {displayAmount(you.chips)}</button>
             )}
             {canRaise&&(
               <div style={{display:"flex",flexDirection:"column",gap:5}}>
@@ -810,12 +810,12 @@ export default function App() {
 
   useEffect(() => { if (table) setView("table"); }, [!!table]);
 
-  // Auto-prompt rebuy when player busts
+  // Auto-prompt rebuy when player busts - only after hand ends
   useEffect(() => {
-    if (table?.you && table.you.chips <= 0 && !showRebuy) {
-      setTimeout(() => setShowRebuy(true), 2000); // wait 2s after bust to show
+    if (table?.you && table.you.chips <= 0 && !table.handActive && !showRebuy) {
+      setTimeout(() => setShowRebuy(true), 1500);
     }
-  }, [table?.you?.chips]);
+  }, [table?.you?.chips, table?.handActive]);
 
   // join_room is handled in onopen above
 
