@@ -420,34 +420,57 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy }: {
       {/* ACTION PANEL */}
       <div style={{padding:"8px 10px",background:"rgba(15,23,42,0.98)",borderTop:"1px solid rgba(255,255,255,0.07)",flexShrink:0}}>
         {you?.myTurn && !you.allIn ? (
-          <div style={{display:"flex",flexDirection:"column",gap:6}}>
-            {/* Timer */}
-            <div style={{display:"flex",alignItems:"center",gap:8}}>
-              <div style={{flex:1,height:3,background:"rgba(255,255,255,0.08)",borderRadius:2,overflow:"hidden"}}>
-                <div style={{height:"100%",width:`${(timeLeft/20)*100}%`,background:timeLeft>8?"#6366f1":timeLeft>4?"#f59e0b":"#ef4444",borderRadius:2,transition:"width 0.2s linear"}}/>
+          <div style={{display:"flex",flexDirection:"column",gap:5}}>
+            {/* Timer bar */}
+            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2}}>
+              <span style={{fontSize:10,color:"#f59e0b",fontWeight:700,letterSpacing:1}}>● YOUR TURN</span>
+              <div style={{flex:1,height:2,background:"rgba(255,255,255,0.07)",borderRadius:2,overflow:"hidden"}}>
+                <div style={{height:"100%",width:`${(timeLeft/20)*100}%`,background:timeLeft>8?"#f59e0b":timeLeft>4?"#f97316":"#ef4444",transition:"width 0.2s linear"}}/>
               </div>
-              <span style={{fontSize:11,fontFamily:"monospace",color:timeLeft<=4?"#ef4444":timeLeft<=8?"#f59e0b":"#64748b",fontWeight:700,minWidth:24}}>{timeLeft}s</span>
+              <span style={{fontSize:10,fontFamily:"monospace",color:timeLeft<=4?"#ef4444":"#64748b",fontWeight:700}}>{timeLeft}s</span>
             </div>
-            {/* Main buttons */}
-            <div style={{display:"flex",gap:8}}>
-              <button onClick={()=>onAct({type:"fold"})} style={{flex:1,padding:"14px 0",background:"rgba(180,29,29,0.7)",border:"2px solid #dc2626",borderRadius:12,color:"#fecaca",fontWeight:800,fontSize:16,cursor:"pointer"}}>FOLD</button>
-              {you.canCheck
-                ? <button onClick={()=>onAct({type:"check"})} style={{flex:1,padding:"14px 0",background:"rgba(51,65,85,0.8)",border:"2px solid #475569",borderRadius:12,color:"#e2e8f0",fontWeight:800,fontSize:16,cursor:"pointer"}}>CHECK</button>
-                : <button onClick={()=>onAct({type:"call"})} style={{flex:1,padding:"14px 0",background:"rgba(67,56,202,0.7)",border:"2px solid #6366f1",borderRadius:12,color:"#e0e7ff",fontWeight:800,fontSize:16,cursor:"pointer"}}>CALL {displayAmount(you.toCall)}</button>}
+            {/* Main action buttons - horizontal row like PokerNow */}
+            <div style={{display:"flex",gap:6}}>
+              {!you.canCheck && (
+                <button onClick={()=>onAct({type:"call"})}
+                  style={{flex:1,padding:"13px 0",background:"transparent",border:"2px solid #22c55e",borderRadius:8,color:"#22c55e",fontWeight:800,fontSize:14,cursor:"pointer",letterSpacing:0.5}}>
+                  CALL<br/><span style={{fontSize:11,fontWeight:600,opacity:0.8}}>{displayAmount(you.toCall)}</span>
+                </button>
+              )}
+              {canRaise && (
+                <button onClick={()=>{ const el=document.getElementById('raise-slider'); if(el) el.scrollIntoView({behavior:'smooth'}); }}
+                  style={{flex:1,padding:"13px 0",background:"transparent",border:"2px solid #f59e0b",borderRadius:8,color:"#f59e0b",fontWeight:800,fontSize:14,cursor:"pointer",letterSpacing:0.5}}>
+                  RAISE
+                </button>
+              )}
+              {you.canCheck && (
+                <button onClick={()=>onAct({type:"check"})}
+                  style={{flex:1,padding:"13px 0",background:"transparent",border:"2px solid #64748b",borderRadius:8,color:"#94a3b8",fontWeight:800,fontSize:14,cursor:"pointer",letterSpacing:0.5}}>
+                  CHECK
+                </button>
+              )}
+              {you && !you.allIn && you.chips > 0 && you.toCall >= you.chips && (
+                <button onClick={()=>onAct({type:"allin"})}
+                  style={{flex:1,padding:"13px 0",background:"transparent",border:"2px solid #f97316",borderRadius:8,color:"#f97316",fontWeight:800,fontSize:14,cursor:"pointer",letterSpacing:0.5}}>
+                  ALL-IN<br/><span style={{fontSize:11,fontWeight:600,opacity:0.8}}>{displayAmount(you.chips)}</span>
+                </button>
+              )}
+              <button onClick={()=>onAct({type:"fold"})}
+                style={{flex:1,padding:"13px 0",background:"transparent",border:"2px solid #ef4444",borderRadius:8,color:"#ef4444",fontWeight:800,fontSize:14,cursor:"pointer",letterSpacing:0.5}}>
+                FOLD
+              </button>
             </div>
-            {/* Raise */}
-            {you && !you.allIn && you.chips > 0 && you.toCall > 0 && you.toCall >= you.chips && (
-              <button onClick={()=>onAct({type:"allin"})} style={{width:"100%",padding:"14px 0",background:"rgba(249,115,22,0.7)",border:"2px solid #f97316",borderRadius:12,color:"#fed7aa",fontWeight:800,fontSize:15,cursor:"pointer"}}>🔥 ALL-IN — {displayAmount(you.chips)}</button>
-            )}
+            {/* Raise slider */}
             {canRaise&&(
-              <div style={{display:"flex",flexDirection:"column",gap:5}}>
+              <div id="raise-slider" style={{display:"flex",flexDirection:"column",gap:4,marginTop:2}}>
                 <div style={{display:"flex",gap:3}}>
-                  {presets.map(p=><button key={p.l} onClick={()=>setRaiseAmt(p.v)} style={{flex:1,padding:"4px 0",borderRadius:6,fontSize:10,fontWeight:600,cursor:"pointer",border:raiseAmt===p.v?"1px solid #7c3aed":"1px solid rgba(255,255,255,0.08)",background:raiseAmt===p.v?"rgba(124,58,237,0.35)":"rgba(255,255,255,0.03)",color:raiseAmt===p.v?"#c4b5fd":"#94a3b8"}}>{p.l}</button>)}
+                  {presets.map(p=><button key={p.l} onClick={()=>setRaiseAmt(p.v)} style={{flex:1,padding:"3px 0",borderRadius:5,fontSize:10,fontWeight:600,cursor:"pointer",border:raiseAmt===p.v?"1px solid #f59e0b":"1px solid rgba(255,255,255,0.08)",background:raiseAmt===p.v?"rgba(245,158,11,0.2)":"transparent",color:raiseAmt===p.v?"#f59e0b":"#64748b"}}>{p.l}</button>)}
                 </div>
-                <div style={{display:"flex",gap:8,alignItems:"center"}}>
-                  <input type="range" min={rMin} max={rMax} step={Math.max(1,Math.floor(bb/2))} value={raiseAmt} onChange={e=>setRaiseAmt(+e.target.value)} style={{flex:1,accentColor:"#7c3aed"}}/>
-                  <button onClick={()=>onAct({type:raiseAmt>=rMax?"allin":"raise",amount:raiseAmt})} style={{padding:"10px 14px",background:raiseAmt>=rMax?"rgba(249,115,22,0.7)":"rgba(124,58,237,0.7)",border:`2px solid ${raiseAmt>=rMax?"#f97316":"#8b5cf6"}`,borderRadius:10,color:"#ede9fe",fontWeight:800,fontSize:13,cursor:"pointer",whiteSpace:"nowrap"}}>
-                    {raiseAmt>=rMax?"🔥 ALL-IN":"RAISE"} {displayAmount(raiseAmt)}
+                <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                  <input type="range" min={rMin} max={rMax} step={Math.max(1,Math.floor(bb/2))} value={raiseAmt} onChange={e=>setRaiseAmt(+e.target.value)} style={{flex:1,accentColor:"#f59e0b"}}/>
+                  <button onClick={()=>onAct({type:raiseAmt>=rMax?"allin":"raise",amount:raiseAmt})}
+                    style={{padding:"8px 12px",background:"transparent",border:`2px solid ${raiseAmt>=rMax?"#f97316":"#f59e0b"}`,borderRadius:7,color:raiseAmt>=rMax?"#f97316":"#f59e0b",fontWeight:800,fontSize:12,cursor:"pointer",whiteSpace:"nowrap",minWidth:90}}>
+                    {raiseAmt>=rMax?"ALL-IN":"RAISE"}<br/><span style={{fontSize:10}}>{displayAmount(raiseAmt)}</span>
                   </button>
                 </div>
               </div>

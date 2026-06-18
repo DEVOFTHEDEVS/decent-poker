@@ -578,7 +578,12 @@ export class PokerTable {
           this.clearTurnTimer();
           if (this.botTimer) { clearTimeout(this.botTimer); this.botTimer = null; }
           this.emit();
-          this.endHandTimer = setTimeout(() => { this.endHandTimer = null; this.endHand(true); }, 800);
+          const capturedAdvHandId = this.handId;
+          this.endHandTimer = setTimeout(() => { 
+            this.endHandTimer = null; 
+            if (this.handId !== capturedAdvHandId) return;
+            this.endHand(true); 
+          }, 800);
         } else {
           this.runBoardOut();
         }
@@ -658,8 +663,25 @@ export class PokerTable {
       if (seat) seat.isTurn = false;
     }
 
+    // Check if anyone can still bet (not all-in)
+    const canAct = this.seats.filter(s => s?.inHand && !s.folded && !s.allIn);
+    if (canAct.length === 0) {
+      // Everyone is all-in — run the board out automatically
+      this.actionSeat = null;
+      this.emit();
+      this.advance(); // will trigger runBoardOut
+      return;
+    }
+
     // Action starts left of button, skip all-in players
-    const firstToAct = this.nextActiveSeat(this.buttonSeat);
+    const firstToAct = this.nextNonAllInSeat(this.buttonSeat);
+    if (firstToAct === -1) {
+      // No one can act
+      this.actionSeat = null;
+      this.emit();
+      this.advance();
+      return;
+    }
     this.actionSeat = firstToAct;
     this.seats[firstToAct]!.isTurn = true;
     this.emit();
@@ -739,10 +761,11 @@ export class PokerTable {
     let delay = 0;
     const CARD_DELAY = 1800;
 
+    const capturedRunoutHandId = this.handId;
     for (const { street, cards } of streets) {
       delay += CARD_DELAY;
       setTimeout(() => {
-        if (!this.handActive) return;
+        if (!this.handActive || this.handId !== capturedRunoutHandId) return;
         this.board = cards;
         this.street = street as any;
         this.emit();
@@ -751,8 +774,10 @@ export class PokerTable {
 
     // End hand after all cards are out + pause
     delay += CARD_DELAY;
+    const capturedEndHandId = this.handId;
     this.endHandTimer = setTimeout(() => {
       this.endHandTimer = null;
+      if (this.handId !== capturedEndHandId) return; // stale timer
       this.endHand(true);
     }, delay);
   }
@@ -977,6 +1002,15 @@ export class PokerTable {
       if (seat && seat.inHand && !seat.folded) return idx;
     }
     return from; // fallback
+  }
+
+  private nextNonAllInSeat(from: number): number {
+    for (let i = 1; i <= this.cfg.maxSeats; i++) {
+      const idx = (from + i) % this.cfg.maxSeats;
+      const seat = this.seats[idx];
+      if (seat && seat.inHand && !seat.folded && !seat.allIn) return idx;
+    }
+    return -1; // no one can act
   }
 
   private minRaise(): number {
