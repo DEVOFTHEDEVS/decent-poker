@@ -699,7 +699,10 @@ export class PokerTable {
     // Prevent double-scheduling
     if (this.endHandTimer) return;
 
-    // Deal remaining board cards — use exact dealt count for offset
+    this.actionSeat = null;
+    this.clearTurnTimer();
+    if (this.botTimer) { clearTimeout(this.botTimer); this.botTimer = null; }
+
     const holeCardCount = this.dealtCount * 2;
     const fullBoard = [
       this.deck[holeCardCount],
@@ -709,18 +712,49 @@ export class PokerTable {
       this.deck[holeCardCount + 4],
     ];
 
-    // Only replace board cards we haven't dealt yet
-    this.board = fullBoard.slice(0, 5);
-    this.street = "river";
-    this.actionSeat = null;
-    this.clearTurnTimer();
-    if (this.botTimer) { clearTimeout(this.botTimer); this.botTimer = null; }
-    this.emit();
+    // Deal cards one at a time with delays so players can see each card
+    const currentBoardLen = this.board.length;
+    const cardsToReveal: { card: any; street: string }[] = [];
 
+    if (currentBoardLen < 3) {
+      // Need to deal flop (3 cards)
+      cardsToReveal.push({ card: null, street: "flop" }); // flop all 3 together
+    }
+    if (currentBoardLen < 4) {
+      cardsToReveal.push({ card: fullBoard[3], street: "turn" });
+    }
+    if (currentBoardLen < 5) {
+      cardsToReveal.push({ card: fullBoard[4], street: "river" });
+    }
+
+    let delay = 0;
+    const CARD_DELAY = 1800; // 1.8s per street
+
+    for (let i = 0; i < cardsToReveal.length; i++) {
+      const step = cardsToReveal[i];
+      delay += CARD_DELAY;
+      setTimeout(() => {
+        if (!this.handActive) return; // hand ended early
+        if (step.street === "flop") {
+          this.board = [fullBoard[0], fullBoard[1], fullBoard[2]];
+          this.street = "flop";
+        } else if (step.street === "turn") {
+          this.board = fullBoard.slice(0, 4);
+          this.street = "turn";
+        } else {
+          this.board = fullBoard.slice(0, 5);
+          this.street = "river";
+        }
+        this.emit();
+      }, delay);
+    }
+
+    // End hand after all cards are out
+    delay += CARD_DELAY;
     this.endHandTimer = setTimeout(() => {
       this.endHandTimer = null;
       this.endHand(true);
-    }, 1500);
+    }, delay);
   }
 
   private endHand(showdown: boolean): void {
