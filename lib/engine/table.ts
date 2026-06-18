@@ -47,6 +47,7 @@ export class PokerTable {
   private handEnding: boolean; // true during result display, prevents double endHand
   private resultTimer: ReturnType<typeof setTimeout> | null; // tracks the resetHand timer
   private handId: number; // increments each hand, used to detect stale timers
+  private runningOut: boolean; // true while runBoardOut is in progress
   private endHandTimer: ReturnType<typeof setTimeout> | null;
   private turnTimer: ReturnType<typeof setTimeout> | null;
   private handTimer: ReturnType<typeof setTimeout> | null;
@@ -80,6 +81,7 @@ export class PokerTable {
     this.handEnding = false;
     this.resultTimer = null;
     this.handId = 0;
+    this.runningOut = false;
     this.endHandTimer = null;
     this.turnTimer = null;
     this.handTimer = null;
@@ -697,7 +699,8 @@ export class PokerTable {
 
   private runBoardOut(): void {
     // Prevent double-scheduling
-    if (this.endHandTimer) return;
+    if (this.endHandTimer || this.runningOut) return;
+    this.runningOut = true;
 
     this.actionSeat = null;
     this.clearTurnTimer();
@@ -712,44 +715,39 @@ export class PokerTable {
       this.deck[holeCardCount + 4],
     ];
 
-    // Deal cards one at a time with delays so players can see each card
-    const currentBoardLen = this.board.length;
-    const cardsToReveal: { card: any; street: string }[] = [];
+    // Keep existing board cards, only deal missing streets
+    // existingBoard has the cards already dealt via normal betting rounds
+    const existingBoard = [...this.board];
+    const currentBoardLen = existingBoard.length;
 
+    const streets: { street: string; cards: any[] }[] = [];
     if (currentBoardLen < 3) {
-      // Need to deal flop (3 cards)
-      cardsToReveal.push({ card: null, street: "flop" }); // flop all 3 together
+      streets.push({ street: "flop", cards: [fullBoard[0], fullBoard[1], fullBoard[2]] });
     }
     if (currentBoardLen < 4) {
-      cardsToReveal.push({ card: fullBoard[3], street: "turn" });
+      streets.push({ street: "turn", cards: [...(currentBoardLen < 3 ? [fullBoard[0],fullBoard[1],fullBoard[2]] : existingBoard), fullBoard[3]] });
     }
     if (currentBoardLen < 5) {
-      cardsToReveal.push({ card: fullBoard[4], street: "river" });
+      const base = currentBoardLen < 3 ? [fullBoard[0],fullBoard[1],fullBoard[2],fullBoard[3]]
+                 : currentBoardLen < 4 ? [...existingBoard, fullBoard[3]]
+                 : existingBoard;
+      streets.push({ street: "river", cards: [...base, fullBoard[4]] });
     }
 
     let delay = 0;
-    const CARD_DELAY = 1800; // 1.8s per street
+    const CARD_DELAY = 1800;
 
-    for (let i = 0; i < cardsToReveal.length; i++) {
-      const step = cardsToReveal[i];
+    for (const { street, cards } of streets) {
       delay += CARD_DELAY;
       setTimeout(() => {
-        if (!this.handActive) return; // hand ended early
-        if (step.street === "flop") {
-          this.board = [fullBoard[0], fullBoard[1], fullBoard[2]];
-          this.street = "flop";
-        } else if (step.street === "turn") {
-          this.board = fullBoard.slice(0, 4);
-          this.street = "turn";
-        } else {
-          this.board = fullBoard.slice(0, 5);
-          this.street = "river";
-        }
+        if (!this.handActive) return;
+        this.board = cards;
+        this.street = street as any;
         this.emit();
       }, delay);
     }
 
-    // End hand after all cards are out
+    // End hand after all cards are out + pause
     delay += CARD_DELAY;
     this.endHandTimer = setTimeout(() => {
       this.endHandTimer = null;
