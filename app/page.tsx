@@ -147,8 +147,9 @@ function useWS(url: string) {
         if (joinRoomId && joinRoomName) {
           sessionStorage.removeItem("join_room_id");
           sessionStorage.removeItem("join_room_name");
-          const joinSeed = typeof sessionStorage!=="undefined" ? (sessionStorage.getItem("player_seed") || genSeed()) : genSeed();
-          sessionStorage.setItem("player_seed", joinSeed);
+          // Use existing seed or create one - must be stable
+          let joinSeed = typeof sessionStorage!=="undefined" ? sessionStorage.getItem("player_seed") : null;
+          if (!joinSeed) { joinSeed = genSeed(); if (typeof sessionStorage!=="undefined") sessionStorage.setItem("player_seed", joinSeed); }
           s.send(JSON.stringify({ type:"join_room", roomId:joinRoomId, name:joinRoomName, playerSeed:joinSeed }));
           return;
         }
@@ -740,14 +741,15 @@ const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "wss://decent-poker-production.
 export default function App() {
   const { connected, lobby, table, error, roomId, setRoomId, send, setTable } = useWS(WS_URL);
   const [view, setView] = useState<"home"|"table">("home");
-  const [seed] = useState(() => {
+  // Always use the same seed from sessionStorage so playerId is stable
+  const seed = (() => {
     if (typeof sessionStorage !== "undefined") {
       let s = sessionStorage.getItem("player_seed");
       if (!s) { s = genSeed(); sessionStorage.setItem("player_seed", s); }
       return s;
     }
     return genSeed();
-  });
+  })();
 
   useEffect(() => { if (table) setView("table"); }, [!!table]);
 
