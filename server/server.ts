@@ -309,11 +309,33 @@ export class PokerServer {
       }
 
       case "rebuy": {
-        if (!client.playerId || !client.tableId) return;
-        const table = this.tables.get(client.tableId);
-        if (!table) return;
+        // Try to find player even if playerId got lost on reconnect
         const rebuyChips = (msg as any).chips || 1000;
-        table.rebuy(client.playerId, rebuyChips);
+        const rebuySeed = (msg as any).playerSeed;
+        let rebuyPlayerId = client.playerId;
+        let rebuyTableId = client.tableId;
+
+        // If we lost the session, try to find by seed
+        if ((!rebuyPlayerId || !rebuyTableId) && rebuySeed && (msg as any).tableId) {
+          rebuyTableId = (msg as any).tableId;
+          const prefixes = ["practice", "room", "player"];
+          const tbl = this.tables.get(rebuyTableId);
+          if (tbl) {
+            for (const prefix of prefixes) {
+              const pid = `${prefix}_${rebuySeed.slice(0, 12)}`;
+              const state = tbl.getClientState(pid);
+              if (state.you) { rebuyPlayerId = pid; client.playerId = pid; client.tableId = rebuyTableId; break; }
+            }
+          }
+        }
+
+        if (!rebuyPlayerId || !rebuyTableId) return;
+        const rebuyTable = this.tables.get(rebuyTableId);
+        if (!rebuyTable) return;
+        const ok = rebuyTable.rebuy(rebuyPlayerId, rebuyChips);
+        if (ok) {
+          this.send(client.ws, { type: "joined", table: rebuyTable.getClientState(rebuyPlayerId) });
+        }
         break;
       }
 

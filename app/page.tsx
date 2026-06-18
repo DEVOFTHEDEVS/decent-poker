@@ -440,6 +440,15 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy }: {
               ))}
             </div>
           </div>
+        ) : you && you.chips <= 0 && !table.handActive ? (
+          <div style={{display:"flex",flexDirection:"column",gap:8,alignItems:"center",padding:"8px 0"}}>
+            <div style={{fontSize:22}}>💸</div>
+            <div style={{color:"#ef4444",fontWeight:800,fontSize:15}}>You're busted!</div>
+            <div style={{display:"flex",gap:8,width:"100%"}}>
+              <button onClick={()=>onRebuy()} style={{flex:2,padding:"13px 0",background:"rgba(67,56,202,0.7)",border:"2px solid #6366f1",borderRadius:12,color:"#e0e7ff",fontWeight:800,fontSize:15,cursor:"pointer"}}>💰 REBUY</button>
+              <button onClick={()=>onLeave()} style={{flex:1,padding:"13px 0",background:"rgba(127,29,29,0.4)",border:"1px solid #7f1d1d",borderRadius:12,color:"#fca5a5",fontWeight:700,fontSize:13,cursor:"pointer"}}>LEAVE</button>
+            </div>
+          </div>
         ) : you && !you.inHand ? (
           <div style={{textAlign:"center",color:"#64748b",fontSize:12,padding:"8px 0"}}>⏳ Sitting out — dealt in next hand</div>
         ) : (
