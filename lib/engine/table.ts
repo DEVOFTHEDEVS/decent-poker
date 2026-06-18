@@ -563,8 +563,11 @@ export class PokerTable {
       return;
     }
 
-    // All remaining players are all-in → run the board out or end hand
-    if (activePlayers.length === 0) {
+    // All remaining players are all-in (or only one has chips but can't bet into all-ins)
+    // → run the board out automatically
+    const canStillBet = activePlayers.length >= 2 || 
+      (activePlayers.length === 1 && inHandPlayers.filter(s => s?.inHand && !s.folded && s?.allIn).length === 0);
+    if (!canStillBet) {
       if (!this.endHandTimer) {
         if (this.street === "river" || this.board.length >= 5) {
           this.actionSeat = null;

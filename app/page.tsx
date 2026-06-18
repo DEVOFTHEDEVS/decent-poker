@@ -83,9 +83,9 @@ function PlayingCard({ card, small, highlight }: { card: Card|"back"|null; small
   const color=SUIT_COLOR[card.s]||"#1e293b";
   return (
     <div style={{width:w,height:h,borderRadius:5,background:"#f8fafc",border:highlight?"2px solid #facc15":"1px solid #e2e8f0",flexShrink:0,padding:2,display:"flex",flexDirection:"column",justifyContent:"space-between",boxShadow:highlight?"0 0 10px rgba(250,204,21,0.5)":"0 2px 6px rgba(0,0,0,0.5)"}}>
-      <div style={{color,fontSize:fs,fontWeight:800,lineHeight:1.1}}>{card.r}<br/><span style={{fontSize:fs-1}}>{card.s}</span></div>
+      <div style={{color,fontSize:card.r==="T"?fs-1:fs,fontWeight:800,lineHeight:1.1}}>{card.r==="T"?"10":card.r}<br/><span style={{fontSize:fs-1}}>{card.s}</span></div>
       <div style={{color,fontSize:small?13:18,textAlign:"center",lineHeight:1}}>{card.s}</div>
-      <div style={{color,fontSize:fs,fontWeight:800,lineHeight:1.1,transform:"rotate(180deg)"}}>{card.r}<br/><span style={{fontSize:fs-1}}>{card.s}</span></div>
+      <div style={{color,fontSize:card.r==="T"?fs-1:fs,fontWeight:800,lineHeight:1.1,transform:"rotate(180deg)"}}>{card.r==="T"?"10":card.r}<br/><span style={{fontSize:fs-1}}>{card.s}</span></div>
     </div>
   );
 }
@@ -290,15 +290,16 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy }: {
     // Pre-defined positions for each player count to avoid overlap
     // Positions are percentages of the felt container (left%, top%)
     // Optimized for oval felt with my seat always at bottom center
+    // Position 0 = my seat (bottom center), rest arranged clockwise around table
     const positions: Record<number, [number, number][]> = {
-      2: [[50,15],[50,85]],
-      3: [[25,15],[75,15],[50,90]],
-      4: [[20,20],[80,20],[80,80],[20,80]],
-      5: [[50,8],[82,30],[68,82],[32,82],[18,30]],
-      6: [[50,8],[82,25],[82,72],[50,90],[18,72],[18,25]],
-      7: [[50,8],[78,18],[88,55],[68,85],[32,85],[12,55],[22,18]],
-      8: [[50,7],[72,10],[88,35],[88,65],[65,88],[35,88],[12,65],[12,35]],
-      9: [[50,7],[68,8],[84,25],[90,52],[75,82],[50,90],[25,82],[10,52],[16,25]],
+      2: [[50,88],[50,10]],
+      3: [[50,88],[20,12],[80,12]],
+      4: [[50,88],[12,50],[50,8],[88,50]],
+      5: [[50,88],[15,62],[25,15],[75,15],[85,62]],
+      6: [[50,88],[15,62],[20,15],[50,8],[80,15],[85,62]],
+      7: [[50,88],[15,68],[12,35],[30,8],[70,8],[88,35],[85,68]],
+      8: [[50,88],[18,72],[10,45],[22,15],[50,6],[78,15],[90,45],[82,72]],
+      9: [[50,88],[20,78],[10,52],[15,22],[38,6],[62,6],[85,22],[90,52],[80,78]],
     };
 
     const pts = positions[Math.min(n, 9)] || positions[9];
