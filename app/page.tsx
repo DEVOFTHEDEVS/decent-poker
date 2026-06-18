@@ -193,12 +193,30 @@ function useWS(url: string) {
           }
           else if (m.type==="room_created") {
             setRoomId(m.roomId); setTable({...m.table});
-            if (typeof sessionStorage!=="undefined") { sessionStorage.setItem("current_table_id", m.table.id); if (m.currency) sessionStorage.setItem("table_currency", m.currency); }
+            if (typeof sessionStorage!=="undefined") {
+              sessionStorage.setItem("current_table_id", m.table.id);
+              sessionStorage.setItem("last_room_id", m.roomId);
+              if (m.currency) sessionStorage.setItem("table_currency", m.currency);
+            }
           }
           else if (m.type==="cashout") { setTable(null); if (typeof sessionStorage!=="undefined") sessionStorage.removeItem("current_table_id"); }
           else if (m.type==="error") {
-            // Only show error if it's about room not found - otherwise clear and go to lobby
-            if (m.message?.includes("Room not found") || m.message?.includes("expired")) {
+            if (m.message?.includes("Session expired") || m.message?.includes("Room not found")) {
+              // Try to recreate the room if we have saved settings (host reconnected)
+              const savedSettings = typeof sessionStorage!=="undefined" ? sessionStorage.getItem("last_room_settings") : null;
+              const savedRoomId = typeof sessionStorage!=="undefined" ? sessionStorage.getItem("last_room_id") : null;
+              if (savedSettings && savedRoomId) {
+                try {
+                  const settings = JSON.parse(savedSettings);
+                  const pSeed = typeof sessionStorage!=="undefined" ? sessionStorage.getItem("player_seed") : null;
+                  const pName = typeof sessionStorage!=="undefined" ? sessionStorage.getItem("player_name") : "Host";
+                  if (pSeed) {
+                    console.log("[RECONNECT] Recreating room with saved settings");
+                    s.send(JSON.stringify({ type:"create_room", name:pName||"Host", playerSeed:pSeed, sb:settings.sb, bb:settings.bb, maxPlayers:settings.maxPlayers, roomName:settings.name, chips:settings.chips, currency:settings.currency }));
+                    return;
+                  }
+                } catch(e) { /* ignore */ }
+              }
               setError(m.message);
             }
             s.send(JSON.stringify({type:"lobby"}));
@@ -845,8 +863,9 @@ export default function App() {
   function handleRoom(settings: {sb:number;bb:number;chips:number;currency:string;name:string;maxPlayers:number}) {
     sessionStorage.setItem("player_seed", seed);
     sessionStorage.setItem("room_currency", settings.currency);
-    sessionStorage.setItem("table_currency", settings.currency); // for displayAmount
+    sessionStorage.setItem("table_currency", settings.currency);
     sessionStorage.setItem("room_chips_start", settings.chips.toString());
+    sessionStorage.setItem("last_room_settings", JSON.stringify(settings));
     send({ type:"create_room", name:getPlayerName(), playerSeed:seed, sb:settings.sb, bb:settings.bb, maxPlayers:settings.maxPlayers, roomName:settings.name || `${getPlayerName()}'s Table`, chips:settings.chips, currency:settings.currency });
   }
 
