@@ -48,6 +48,7 @@ export class PokerTable {
   private resultTimer: ReturnType<typeof setTimeout> | null; // tracks the resetHand timer
   private handId: number; // increments each hand, used to detect stale timers
   private runningOut: boolean; // true while runBoardOut is in progress
+  private advancing: boolean; // prevent re-entrant advance() calls
   private endHandTimer: ReturnType<typeof setTimeout> | null;
   private turnTimer: ReturnType<typeof setTimeout> | null;
   private handTimer: ReturnType<typeof setTimeout> | null;
@@ -82,6 +83,7 @@ export class PokerTable {
     this.resultTimer = null;
     this.handId = 0;
     this.runningOut = false;
+    this.advancing = false;
     this.endHandTimer = null;
     this.turnTimer = null;
     this.handTimer = null;
@@ -541,8 +543,8 @@ export class PokerTable {
     }
 
     player.isTurn = false;
-    this.emit();
     this.advance();
+    this.emit();
     return { ok: true };
   }
 
