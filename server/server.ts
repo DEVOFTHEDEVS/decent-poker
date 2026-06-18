@@ -186,11 +186,34 @@ export class PokerServer {
       }
 
       case "act": {
-        if (!client.playerId || !client.tableId) return;
+        // Auto-recover session if lost on reconnect
+        if ((!client.playerId || !client.tableId) && (msg as any).playerSeed && (msg as any).tableId) {
+          const recSeed = (msg as any).playerSeed;
+          const recTableId = (msg as any).tableId;
+          const recTable = this.tables.get(recTableId);
+          if (recTable) {
+            for (const prefix of ["practice", "room", "player"]) {
+              const pid = `${prefix}_${recSeed.slice(0, 12)}`;
+              if (recTable.getClientState(pid).you) {
+                client.playerId = pid; client.tableId = recTableId;
+                console.log("[ACT RECOVER] restored session:", pid);
+                break;
+              }
+            }
+          }
+        }
+        if (!client.playerId || !client.tableId) {
+          console.log("[ACT FAILED] no playerId or tableId");
+          return;
+        }
         const table = this.tables.get(client.tableId);
-        if (!table) return;
+        if (!table) {
+          console.log("[ACT FAILED] table not found:", client.tableId);
+          return;
+        }
         const result = table.act(client.playerId, msg.action);
         if (!result.ok) {
+          console.log("[ACT FAILED]", client.playerId, msg.action?.type, result.error);
           this.send(client.ws, { type: "error", message: result.error || "Action failed" });
         }
         break;
@@ -282,16 +305,24 @@ export class PokerServer {
         const rjTable = this.tables.get(rjTableId);
         if (!rjTable) { this.send(client.ws, { type: "lobby" }); this.sendLobby(client.ws); return; }
 
-        // Try all possible playerId prefixes (practice_, room_, player_)
-        const prefixes = ["practice", "room", "player"];
+        // Try all possible playerId prefixes
+        const prefixes = ["practice", "room", "player", "bot"];
         let foundId: string | null = null;
         for (const prefix of prefixes) {
           const pid = `${prefix}_${rjSeed.slice(0, 12)}`;
-          // Cancel any pending disconnect timer
           const pendingTimer = this.disconnectTimers.get(pid);
           if (pendingTimer) { clearTimeout(pendingTimer); this.disconnectTimers.delete(pid); }
           const state = rjTable.getClientState(pid);
           if (state.you) { foundId = pid; break; }
+        }
+        // Fallback: search all connected clients for matching seed
+        if (!foundId) {
+          for (const [, c2] of this.clients) {
+            if (c2.tableId === rjTableId && c2.playerId) {
+              const seedMatch = c2.playerId.includes(rjSeed.slice(0, 8));
+              if (seedMatch) { foundId = c2.playerId; break; }
+            }
+          }
         }
 
         if (foundId) {

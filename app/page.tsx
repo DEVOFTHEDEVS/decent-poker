@@ -943,7 +943,7 @@ export default function App() {
       {view==="table" && table ? (
         <TableView
           table={table}
-          onAct={a=>send({type:"act",tableId:table.id,action:a})}
+          onAct={a=>send({type:"act",tableId:table.id,action:a,playerSeed:seed})}
           onChat={t=>send({type:"chat",tableId:table.id,text:t})}
           onLeave={handleLeave}
           onSitDown={(seatIdx)=>{ setSelectedSeat(seatIdx??null); setSitConfirmAmt("1000"); }}
