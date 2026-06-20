@@ -269,7 +269,10 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy }: {
   // Turn timer
   useEffect(() => {
     if (!you?.myTurn) { setTimeLeft(20); return; }
-    setRaiseAmt(Math.min(you.minRaiseTo, you.maxRaiseTo));
+    // Default to 2x pot raise, clamped to valid range
+    const twoPot = table.currentBet + (table.pot * 2);
+    const defaultRaise = Math.max(you.minRaiseTo, Math.min(you.maxRaiseTo, twoPot));
+    setRaiseAmt(defaultRaise);
     beeped.current = new Set();
     const start = Date.now();
     const iv = setInterval(() => {
@@ -441,9 +444,9 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy }: {
                 </button>
               )}
               {canRaise && (
-                <button onClick={()=>{ const el=document.getElementById('raise-slider'); if(el) el.scrollIntoView({behavior:'smooth'}); }}
+                <button onClick={()=>onAct({type:raiseAmt>=rMax?"allin":"raise",amount:raiseAmt})}
                   style={{flex:1,padding:"13px 0",background:"transparent",border:"2px solid #f59e0b",borderRadius:8,color:"#f59e0b",fontWeight:800,fontSize:14,cursor:"pointer",letterSpacing:0.5}}>
-                  RAISE
+                  RAISE<br/><span style={{fontSize:11,fontWeight:600,opacity:0.8}}>{displayAmount(raiseAmt)}</span>
                 </button>
               )}
               {you.canCheck && (
