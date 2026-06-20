@@ -1,8 +1,6 @@
 import { PokerServer } from "./server";
-import { BOT_ROSTER } from "../lib/engine/bot";
 import { TABLE_CONFIGS } from "../lib/engine/types";
 
-// Railway assigns PORT dynamically — must use it or connections fail
 const WS_PORT = parseInt(process.env.PORT || "3001");
 const server = new PokerServer(WS_PORT);
 
@@ -24,20 +22,6 @@ server.onHandComplete = async (result, tableId) => {
   console.log(`[HAND] ${tableId} → ${winners}`);
 };
 
-setTimeout(() => {
-  TABLE_CONFIGS.forEach((cfg, tableIdx) => {
-    const table = server.getTable(cfg.id);
-    if (!table) return;
-    for (let i = 0; i < 3; i++) {
-      const bot = BOT_ROSTER[(tableIdx * 3 + i) % BOT_ROSTER.length];
-      const botId = `bot_${cfg.id}_${i}`;
-      const chips = cfg.minBuyIn * (2 + Math.floor(Math.random() * 4));
-      table.sitDownBot(botId, bot.name, chips, bot.personality);
-    }
-    console.log(`[BOT] 3 bots seated at ${cfg.name}`);
-  });
-}, 2000);
-
 // Keep-alive ping every 4 minutes to prevent Railway from sleeping
 const KEEPALIVE_URL = process.env.RAILWAY_PUBLIC_DOMAIN
   ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
@@ -51,6 +35,10 @@ setInterval(async () => {
     console.log("[KEEPALIVE] failed", (e as any)?.message);
   }
 }, 4 * 60 * 1000);
+
+// No bots seated at startup — tables wait for humans
+// Bots only join when a human sits down (handled per-table if needed)
+console.log(`[SERVER] ${TABLE_CONFIGS.length} tables ready, waiting for players`);
 
 process.on("SIGTERM", () => { server.close(); process.exit(0); });
 process.on("SIGINT",  () => { server.close(); process.exit(0); });
