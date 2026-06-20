@@ -574,10 +574,11 @@ export class PokerTable {
     // i.e. no active player still needs to call/fold the all-in
     const playersNeedingToAct = activePlayers.filter(s => {
       const toCall = Math.max(0, this.currentBet - s!.bet);
-      return toCall > 0 || !s!.lastAction; // still needs to call or hasn't acted this street
+      return toCall > 0 || !s!.lastAction;
     });
     const canStillBet = activePlayers.length >= 2 || playersNeedingToAct.length > 0;
     if (!canStillBet) {
+      console.log("[ADVANCE] canStillBet=false active="+activePlayers.length+" needAct="+playersNeedingToAct.length+" street="+this.street+" board="+this.board.length);
       if (!this.endHandTimer) {
         if (this.street === "river" || this.board.length >= 5) {
           this.actionSeat = null;
@@ -729,7 +730,11 @@ export class PokerTable {
 
   private runBoardOut(): void {
     // Prevent double-scheduling
-    if (this.endHandTimer || this.runningOut) return;
+    if (this.endHandTimer || this.runningOut) {
+      console.log("[RUNOUT BLOCKED] endHandTimer="+(this.endHandTimer?'SET':'null')+' runningOut='+this.runningOut+' betweenHands='+this.betweenHands);
+      return;
+    }
+    console.log("[RUNOUT START] board="+this.board.length+" street="+this.street);
     this.runningOut = true;
 
     this.actionSeat = null;
@@ -1077,11 +1082,13 @@ export class PokerTable {
 
   /** Watchdog: detect and recover stuck hands */
   healthCheck(): void {
-    if (!this.handActive || this.handEnding) return;
+    if (!this.handActive || this.handEnding || this.runningOut) return;
     const active = this.seats.filter(s => s?.inHand && !s.folded && !s.allIn);
     if (this.actionSeat === null && active.length >= 1) {
-      console.log("[WATCHDOG] Stuck hand detected, recovering...");
-      this.endHand(false);
+      console.log("[WATCHDOG] Stuck hand detected, board="+this.board.length+" recovering...");
+      // Only showdown if we have a full board, otherwise end without showdown
+      const canShowdown = this.board.length >= 5;
+      this.endHand(canShowdown);
     }
   }
 
