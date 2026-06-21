@@ -292,8 +292,8 @@ export class PokerServer {
         client.playerId = playerId;
         client.tableId = roomInfo.tableId;
         client.isSpectator = false;
-        const ROOM_CHIPS = 1_000_000_000_000;
-        const tableChips = roomInfo.startingChips || jrChips || 1000;
+        // Use player's chosen buy-in if provided, otherwise fall back to room default
+        const tableChips = jrChips || roomInfo.startingChips || 1000;
         const ok = jrTable.sitDown(playerId, jrName || "Player", tableChips, jrSeed);
         if (!ok) { this.send(client.ws, { type: "error", message: "Room is full" }); return; }
         this.send(client.ws, { type: "joined", table: jrTable.getClientState(playerId), currency: roomInfo.currency || 'chips' });
@@ -356,20 +356,34 @@ export class PokerServer {
       }
 
       case "pause": {
-        if (!client.playerId || !client.tableId) return;
-        const table = this.tables.get(client.tableId);
-        if (!table) return;
-        table.pause(client.playerId);
-        console.log(`[PAUSE] ${client.playerId}`);
+        const pauseSeed = (msg as any).playerSeed;
+        let pauseId = client.playerId;
+        let pauseTableId = client.tableId || (msg as any).tableId;
+        if (!pauseId && pauseSeed && pauseTableId) {
+          const tbl = this.tables.get(pauseTableId);
+          if (tbl) for (const px of ["practice","room","player"]) { const pid=`${px}_${pauseSeed.slice(0,12)}`; if(tbl.getClientState(pid).you){pauseId=pid;client.playerId=pid;client.tableId=pauseTableId;break;} }
+        }
+        if (!pauseId || !pauseTableId) return;
+        const pauseTable = this.tables.get(pauseTableId);
+        if (!pauseTable) return;
+        pauseTable.pause(pauseId);
+        console.log(`[PAUSE] ${pauseId}`);
         break;
       }
 
       case "resume": {
-        if (!client.playerId || !client.tableId) return;
-        const table = this.tables.get(client.tableId);
-        if (!table) return;
-        table.resume(client.playerId);
-        console.log(`[RESUME] ${client.playerId}`);
+        const resSeed = (msg as any).playerSeed;
+        let resId = client.playerId;
+        let resTableId = client.tableId || (msg as any).tableId;
+        if (!resId && resSeed && resTableId) {
+          const tbl = this.tables.get(resTableId);
+          if (tbl) for (const px of ["practice","room","player"]) { const pid=`${px}_${resSeed.slice(0,12)}`; if(tbl.getClientState(pid).you){resId=pid;client.playerId=pid;client.tableId=resTableId;break;} }
+        }
+        if (!resId || !resTableId) return;
+        const resTable = this.tables.get(resTableId);
+        if (!resTable) return;
+        resTable.resume(resId);
+        console.log(`[RESUME] ${resId}`);
         break;
       }
 
