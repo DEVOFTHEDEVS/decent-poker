@@ -116,6 +116,7 @@ function SeatPod({ seat, isMe, isWinner, winCards, pos, small }: { seat: Seat; i
         </div>
       </div>
       {seat.allIn&&<span style={{fontSize:7,padding:"1px 4px",background:"rgba(249,115,22,0.2)",color:"#fb923c",borderRadius:3,fontWeight:700}}>ALL-IN</span>}
+      {seat.sittingOut&&!seat.allIn&&<span style={{fontSize:7,padding:"1px 4px",background:"rgba(100,116,139,0.2)",color:"#94a3b8",borderRadius:3,fontWeight:700}}>BREAK</span>}
     </div>
   );
 }
@@ -237,8 +238,8 @@ function useWS(url: string) {
 }
 
 // ── Table View ────────────────────────────────────────────────────────────────
-function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy }: {
-  table: TableState; onAct:(a:any)=>void; onChat:(t:string)=>void; onLeave:()=>void; onSitDown?:(seatIdx?:number)=>void; onRebuy:()=>void;
+function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy, onPause }: {
+  table: TableState; onAct:(a:any)=>void; onChat:(t:string)=>void; onLeave:()=>void; onSitDown?:(seatIdx?:number)=>void; onRebuy:()=>void; onPause:()=>void;
 }) {
   const [chatText, setChatText] = useState("");
   const [chatOpen, setChatOpen] = useState(false);
@@ -369,6 +370,11 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy }: {
           </button>
           {you && !you.sittingOut && !you.inHand && (
             <button onClick={()=>onAct({type:'sit_out'} as any)} style={{padding:"4px 8px",background:"transparent",border:"1px solid #475569",borderRadius:6,color:"#64748b",fontSize:10,fontWeight:600,cursor:"pointer"}}>⏸</button>
+          )}
+          {you && (
+            <button onClick={()=>onPause()} style={{padding:"4px 8px",background:you.sittingOut?"rgba(34,197,94,0.2)":"rgba(30,41,59,0.6)",border:you.sittingOut?"1px solid #22c55e":"1px solid rgba(255,255,255,0.08)",borderRadius:6,color:you.sittingOut?"#86efac":"#94a3b8",fontSize:10,fontWeight:700,cursor:"pointer"}}>
+              {you.sittingOut?"▶ BACK":"⏸ BREAK"}
+            </button>
           )}
           <button onClick={onLeave} style={{padding:"4px 10px",background:"rgba(127,29,29,0.5)",border:"1px solid #7f1d1d",borderRadius:6,color:"#fca5a5",fontSize:11,fontWeight:700,cursor:"pointer"}}>LEAVE</button>
         </div>
@@ -962,11 +968,15 @@ export default function App() {
       {view==="table" && table ? (
         <TableView
           table={table}
-          onAct={a=>{ if((a as any).type==='sit_out'){send({type:'sit_out',tableId:table.id});}else if((a as any).type==='sit_in'){send({type:'sit_in',tableId:table.id});}else{send({type:'act',tableId:table.id,action:a,playerSeed:seed});}  }}
+          onAct={a=>send({type:"act",tableId:table.id,action:a,playerSeed:seed})}
           onChat={t=>send({type:"chat",tableId:table.id,text:t})}
           onLeave={handleLeave}
           onSitDown={(seatIdx)=>{ setSelectedSeat(seatIdx??null); setSitConfirmAmt("1000"); }}
           onRebuy={()=>setShowRebuy(true)}
+          onPause={()=>{
+            if(table.you?.sittingOut) send({type:"resume",tableId:table.id});
+            else send({type:"pause",tableId:table.id});
+          }}
         />
       ) : (
         <div style={{paddingTop:36}}>

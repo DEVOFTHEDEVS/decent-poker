@@ -355,6 +355,24 @@ export class PokerServer {
         break;
       }
 
+      case "pause": {
+        if (!client.playerId || !client.tableId) return;
+        const table = this.tables.get(client.tableId);
+        if (!table) return;
+        table.pause(client.playerId);
+        console.log(`[PAUSE] ${client.playerId}`);
+        break;
+      }
+
+      case "resume": {
+        if (!client.playerId || !client.tableId) return;
+        const table = this.tables.get(client.tableId);
+        if (!table) return;
+        table.resume(client.playerId);
+        console.log(`[RESUME] ${client.playerId}`);
+        break;
+      }
+
       case "rebuy": {
         // Try to find player even if playerId got lost on reconnect
         const rebuyChips = (msg as any).chips || 1000;

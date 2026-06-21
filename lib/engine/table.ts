@@ -19,8 +19,8 @@ import type {
 const LAMPORTS = 1_000_000_000; // per SOL
 const TURN_TIME_MS = 20_000;
 const IDLE_KICK_MS = 90_000;
-const BETWEEN_HAND_DELAY_MS = 2_000;
-const RESULT_SHOW_MS = 3_000;
+const BETWEEN_HAND_DELAY_MS = parseInt(process.env.HAND_DELAY_MS || "2000");
+const RESULT_SHOW_MS = parseInt(process.env.RESULT_MS || "3000");
 
 export class PokerTable {
   private cfg: TableConfig;
@@ -188,6 +188,31 @@ export class PokerTable {
     seat.sittingOut = false;
     this.emit();
     if (!this.handActive && !this.handEnding && !this.betweenHands) this.maybeStartHand();
+    return true;
+  }
+
+  /** Pause a player - sit them out until they resume */
+  pause(playerId: string): boolean {
+    const seat = this.seats.find(s => s?.id === playerId);
+    if (!seat) return false;
+    seat.sittingOut = true;
+    // If it's their turn, auto-fold/check
+    const seatIdx = this.seats.findIndex(s => s?.id === playerId);
+    if (seatIdx === this.actionSeat && this.handActive) {
+      if (seat.bet >= this.currentBet) this.doCheck(seatIdx);
+      else this.act(playerId, { type: 'fold' });
+    }
+    this.emit();
+    return true;
+  }
+
+  /** Resume a paused player */
+  resume(playerId: string): boolean {
+    const seat = this.seats.find(s => s?.id === playerId);
+    if (!seat) return false;
+    seat.sittingOut = false;
+    this.emit();
+    if (!this.handActive) this.maybeStartHand();
     return true;
   }
 
@@ -786,7 +811,7 @@ this.runningOut = true;
     }
 
     let delay = 0;
-    const CARD_DELAY = 1800;
+    const CARD_DELAY = parseInt(process.env.CARD_DELAY_MS || "1800");
 
     const capturedRunoutHandId = this.handId;
     for (const { street, cards } of streets) {
