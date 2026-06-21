@@ -168,7 +168,19 @@ function useWS(url: string) {
           if (!joinSeed) { joinSeed = genSeed(); if (typeof sessionStorage!=="undefined") sessionStorage.setItem("player_seed", joinSeed); }
           const joinCurrency = typeof sessionStorage!=="undefined" ? (sessionStorage.getItem("room_currency") || "chips") : "chips";
           if (typeof sessionStorage!=="undefined") sessionStorage.setItem("table_currency", joinCurrency);
-          s.send(JSON.stringify({ type:"join_room", roomId:joinRoomId, name:joinRoomName, playerSeed:joinSeed, currency:joinCurrency }));
+          // Get custom buy-in if set on invite page
+          const joinBuyInRaw = typeof sessionStorage!=="undefined" ? sessionStorage.getItem("join_room_buyin") : null;
+          let joinChips: number | undefined;
+          if (joinBuyInRaw) {
+            const amt = parseFloat(joinBuyInRaw);
+            if (!isNaN(amt) && amt > 0) {
+              if (joinCurrency === "usd") joinChips = Math.round(amt * 100);
+              else if (joinCurrency === "sol") joinChips = Math.round(amt * 1e9);
+              else joinChips = Math.round(amt);
+            }
+            if (typeof sessionStorage!=="undefined") sessionStorage.removeItem("join_room_buyin");
+          }
+          s.send(JSON.stringify({ type:"join_room", roomId:joinRoomId, name:joinRoomName, playerSeed:joinSeed, currency:joinCurrency, ...(joinChips ? {chips:joinChips} : {}) }));
           return;
         }
 
@@ -974,7 +986,10 @@ export default function App() {
           onSitDown={(seatIdx)=>{ setSelectedSeat(seatIdx??null); setSitConfirmAmt("1000"); }}
           onRebuy={()=>setShowRebuy(true)}
           onPause={()=>{
-            if(table.you?.sittingOut) send({type:"resume",tableId:table.id,playerSeed:seed});
+            // Use current seat state from the seats array (more reliable than you.sittingOut)
+            const mySeat = table.seats?.find((s:any)=>s?.id?.includes(seed.slice(0,8)));
+            const isOut = mySeat?.sittingOut || table.you?.sittingOut;
+            if(isOut) send({type:"resume",tableId:table.id,playerSeed:seed});
             else send({type:"pause",tableId:table.id,playerSeed:seed});
           }}
         />

@@ -1,6 +1,6 @@
 "use client";
 import { useParams } from "next/navigation";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 
 export default function TablePage() {
   const params = useParams();
@@ -13,6 +13,9 @@ export default function TablePage() {
     if (params?.roomId) setRoomId((params.roomId as string).toLowerCase());
   }, [params]);
 
+  const [buyIn, setBuyIn] = useState("");
+  const [showBuyIn, setShowBuyIn] = useState(false);
+
   const handleJoin = () => {
     if (!name.trim()) { setError("Enter your name first"); return; }
     if (!roomId) { setError("Invalid room code"); return; }
@@ -20,6 +23,8 @@ export default function TablePage() {
       sessionStorage.setItem("player_name", name.trim());
       sessionStorage.setItem("join_room_id", roomId);
       sessionStorage.setItem("join_room_name", name.trim());
+      // Store buy-in if set
+      if (buyIn) sessionStorage.setItem("join_room_buyin", buyIn);
     }
     setJoining(true);
     window.location.href = "/";
@@ -51,6 +56,19 @@ export default function TablePage() {
         />
         {error && <p style={{ color:"#ef4444", fontSize:12, margin:"0 0 14px" }}>{error}</p>}
 
+        <div style={{marginBottom:14}}>
+          <label style={{display:"block",fontSize:11,color:"#475569",fontWeight:600,letterSpacing:1,marginBottom:6}}>BUY-IN AMOUNT (optional)</label>
+          <div style={{display:"flex",gap:6,marginBottom:6,flexWrap:"wrap"}}>
+            {["10","20","50","100","200"].map(v=>(
+              <button key={v} onClick={()=>setBuyIn(v)} style={{padding:"4px 10px",borderRadius:7,fontSize:12,fontWeight:600,cursor:"pointer",
+                background:buyIn===v?"rgba(67,56,202,0.4)":"rgba(30,41,59,0.6)",
+                border:buyIn===v?"1px solid #4338ca":"1px solid rgba(255,255,255,0.06)",
+                color:buyIn===v?"#a5b4fc":"#64748b"}}>{"$"}{v}</button>
+            ))}
+          </div>
+          <input type="number" value={buyIn} onChange={e=>setBuyIn(e.target.value)} placeholder="Or type custom amount…" min="1"
+            style={{width:"100%",background:"rgba(30,41,59,0.6)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:9,padding:"9px 12px",fontSize:14,color:"#f1f5f9",outline:"none",boxSizing:"border-box" as any,fontFamily:"monospace"}}/>
+        </div>
         <button onClick={handleJoin} disabled={joining}
           style={{ width:"100%", padding:"15px 0", background: joining ? "rgba(67,56,202,0.5)" : "#4338ca", border:"none", borderRadius:13, color:"#fff", fontSize:16, fontWeight:700, cursor: joining ? "wait" : "pointer" }}>
           {joining ? "Joining…" : "JOIN TABLE →"}
