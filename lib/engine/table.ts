@@ -96,9 +96,15 @@ export class PokerTable {
   // ── Public API ──────────────────────────────────────────────────────────────
 
   /** Add a player to the table after their buy-in is verified on-chain */
-  sitDown(playerId: string, name: string, chips: number, playerSeed: string, avatarUrl?: string): boolean {
+  sitDown(playerId: string, name: string, chips: number, playerSeed: string, avatarUrl?: string, preferredSeat?: number): boolean {
     if (this.seats.some(s => s?.id === playerId)) return false; // already seated
-    const emptySeat = this.seats.findIndex(s => s === null);
+    // Try preferred seat first, then any empty seat
+    let emptySeat = -1;
+    if (preferredSeat !== undefined && preferredSeat >= 0 && preferredSeat < this.seats.length && this.seats[preferredSeat] === null) {
+      emptySeat = preferredSeat;
+    } else {
+      emptySeat = this.seats.findIndex(s => s === null);
+    }
     if (emptySeat === -1) return false; // full
 
     this.playerSeeds.set(playerId, playerSeed);

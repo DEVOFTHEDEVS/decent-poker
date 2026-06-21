@@ -247,10 +247,11 @@ export class PokerServer {
         client.tableId = ptid;
         client.isSpectator = false;
         const PRACTICE_CHIPS = ptCustomChips || 1000;
+        const ptPreferredSeat = (msg as any).preferredSeat;
         // Check if already seated (rejoin)
         const existingSeat = ptable.getClientState(playerId).you;
         if (!existingSeat) {
-          const ok = ptable.sitDown(playerId, pname || "Player", PRACTICE_CHIPS, pseed);
+          const ok = ptable.sitDown(playerId, pname || "Player", PRACTICE_CHIPS, pseed, undefined, ptPreferredSeat);
           if (!ok) { this.send(client.ws, { type: "error", message: "Table full" }); return; }
         }
         this.send(client.ws, { type: "joined", table: ptable.getClientState(playerId) });
@@ -294,7 +295,8 @@ export class PokerServer {
         client.isSpectator = false;
         // Use player's chosen buy-in if provided, otherwise fall back to room default
         const tableChips = jrChips || roomInfo.startingChips || 1000;
-        const ok = jrTable.sitDown(playerId, jrName || "Player", tableChips, jrSeed);
+        const jrPreferredSeat = (msg as any).preferredSeat;
+        const ok = jrTable.sitDown(playerId, jrName || "Player", tableChips, jrSeed, undefined, jrPreferredSeat);
         if (!ok) { this.send(client.ws, { type: "error", message: "Room is full" }); return; }
         this.send(client.ws, { type: "joined", table: jrTable.getClientState(playerId), currency: roomInfo.currency || 'chips' });
         break;
