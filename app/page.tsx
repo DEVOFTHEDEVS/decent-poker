@@ -520,7 +520,7 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy, onPause 
         ) : you && you.sittingOut ? (
           <div style={{display:"flex",flexDirection:"column",gap:8,alignItems:"center",padding:"6px 0"}}>
             <div style={{color:"#64748b",fontSize:12}}>⏸ On a break</div>
-            <button onClick={()=>onAct({type:'sit_in'} as any)}
+            <button onClick={()=>onPause()}
               style={{padding:"10px 24px",background:"rgba(34,197,94,0.2)",border:"2px solid #22c55e",borderRadius:10,color:"#22c55e",fontWeight:700,fontSize:14,cursor:"pointer"}}>
               ▶ COME BACK
             </button>
@@ -974,8 +974,8 @@ export default function App() {
           onSitDown={(seatIdx)=>{ setSelectedSeat(seatIdx??null); setSitConfirmAmt("1000"); }}
           onRebuy={()=>setShowRebuy(true)}
           onPause={()=>{
-            if(table.you?.sittingOut) send({type:"resume",tableId:table.id});
-            else send({type:"pause",tableId:table.id});
+            if(table.you?.sittingOut) send({type:"resume",tableId:table.id,playerSeed:seed});
+            else send({type:"pause",tableId:table.id,playerSeed:seed});
           }}
         />
       ) : (
@@ -992,28 +992,37 @@ export default function App() {
           <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:440,background:"#0f172a",border:"1px solid rgba(255,255,255,0.08)",borderRadius:"20px 20px 0 0",padding:24}}>
             <h2 style={{margin:"0 0 4px",fontSize:18,fontWeight:800,color:"#f1f5f9"}}>🪑 Sit at Seat {selectedSeat + 1}</h2>
             <p style={{margin:"0 0 14px",color:"#64748b",fontSize:13}}>Choose your starting stack</p>
-            <div style={{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}>
-              {["500","1000","2000","5000","10000"].map(v=>(
-                <button key={v} onClick={()=>setSitConfirmAmt(v)} style={{padding:"6px 12px",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer",
-                  background:sitConfirmAmt===v?"rgba(67,56,202,0.4)":"rgba(30,41,59,0.6)",
-                  border:sitConfirmAmt===v?"1px solid #4338ca":"1px solid rgba(255,255,255,0.06)",
-                  color:sitConfirmAmt===v?"#a5b4fc":"#64748b"}}>{v}</button>
-              ))}
-            </div>
-            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14}}>
-              <input type="number" value={sitConfirmAmt} onChange={e=>setSitConfirmAmt(e.target.value)} min="1"
-                style={{flex:1,background:"rgba(30,41,59,0.8)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,padding:"11px 14px",fontSize:18,color:"#f1f5f9",fontFamily:"monospace",outline:"none"}}/>
-              <span style={{color:"#475569",fontWeight:600}}>chips</span>
-            </div>
+            {(()=>{
+              const currency = typeof sessionStorage!=="undefined" ? sessionStorage.getItem("table_currency")||"chips" : "chips";
+              const isUSD = currency === "usd";
+              const isSOL = currency === "sol";
+              const presets = isUSD ? ["10","20","50","100","200","500"] : isSOL ? ["0.5","1","2","5","10"] : ["500","1000","2000","5000","10000"];
+              const unit = isUSD ? "USD ($)" : isSOL ? "SOL" : "chips";
+              return (<>
+                <div style={{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}>
+                  {presets.map(v=>(
+                    <button key={v} onClick={()=>setSitConfirmAmt(v)} style={{padding:"6px 12px",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer",
+                      background:sitConfirmAmt===v?"rgba(67,56,202,0.4)":"rgba(30,41,59,0.6)",
+                      border:sitConfirmAmt===v?"1px solid #4338ca":"1px solid rgba(255,255,255,0.06)",
+                      color:sitConfirmAmt===v?"#a5b4fc":"#64748b"}}>{isUSD?"$":""}{v}</button>
+                  ))}
+                </div>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14}}>
+                  <input type="number" value={sitConfirmAmt} onChange={e=>setSitConfirmAmt(e.target.value)} min={isUSD?"1":isSOL?"0.1":"100"} step={isUSD?"1":isSOL?"0.1":"100"}
+                    style={{flex:1,background:"rgba(30,41,59,0.8)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:10,padding:"11px 14px",fontSize:18,color:"#f1f5f9",fontFamily:"monospace",outline:"none"}}/>
+                  <span style={{color:"#475569",fontWeight:600}}>{unit}</span>
+                </div>
+              </>);
+            })()}
             <div style={{display:"flex",gap:9}}>
               <button onClick={()=>setSelectedSeat(null)} style={{flex:1,padding:"11px 0",borderRadius:12,background:"transparent",border:"1px solid rgba(255,255,255,0.07)",color:"#64748b",fontWeight:700,fontSize:14,cursor:"pointer"}}>CANCEL</button>
               <button onClick={()=>{
                 if (!table) return;
-                const chips = parseInt(sitConfirmAmt)||1000;
-                // For cash games use the normal join flow, for rooms use practice join
-                const currency = typeof sessionStorage!=="undefined" ? sessionStorage.getItem("table_currency")||"chips" : "chips";
-                if (currency === "sol") {
-                  // Cash game - need buy-in
+                const cur = typeof sessionStorage!=="undefined" ? sessionStorage.getItem("table_currency")||"chips" : "chips";
+                const raw = parseFloat(sitConfirmAmt)||1000;
+                // Convert to internal units
+                const chips = cur==="usd" ? Math.round(raw*100) : cur==="sol" ? Math.round(raw*1e9) : Math.round(raw);
+                if (cur === "sol") {
                   const sig = `dev_${Date.now()}_${seed.slice(0,8)}`;
                   send({type:"join", tableId:table.id, lamports:chips, signature:sig, name:getPlayerName(), playerSeed:seed});
                 } else {
