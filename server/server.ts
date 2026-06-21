@@ -341,6 +341,20 @@ export class PokerServer {
         break;
       }
 
+      case "sit_out": {
+        if (!client.playerId || !client.tableId) return;
+        const soTable = this.tables.get(client.tableId);
+        if (soTable) soTable.sitOut(client.playerId);
+        break;
+      }
+
+      case "sit_in": {
+        if (!client.playerId || !client.tableId) return;
+        const siTable = this.tables.get(client.tableId);
+        if (siTable) siTable.sitIn(client.playerId);
+        break;
+      }
+
       case "rebuy": {
         // Try to find player even if playerId got lost on reconnect
         const rebuyChips = (msg as any).chips || 1000;

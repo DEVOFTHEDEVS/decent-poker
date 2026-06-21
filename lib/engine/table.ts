@@ -172,6 +172,25 @@ export class PokerTable {
     return chips;
   }
 
+  /** Player sits out (takes a break) */
+  sitOut(playerId: string): boolean {
+    const seat = this.seats.find(s => s?.id === playerId);
+    if (!seat) return false;
+    seat.sittingOut = true;
+    this.emit();
+    return true;
+  }
+
+  /** Player comes back from break */
+  sitIn(playerId: string): boolean {
+    const seat = this.seats.find(s => s?.id === playerId);
+    if (!seat) return false;
+    seat.sittingOut = false;
+    this.emit();
+    if (!this.handActive && !this.handEnding && !this.betweenHands) this.maybeStartHand();
+    return true;
+  }
+
   /** Add chips to a player's stack (rebuy) */
   rebuy(playerId: string, chips: number): boolean {
     const seat = this.seats.find(s => s?.id === playerId);
@@ -578,7 +597,6 @@ export class PokerTable {
     });
     const canStillBet = activePlayers.length >= 2 || playersNeedingToAct.length > 0;
     if (!canStillBet) {
-      console.log("[ADVANCE] canStillBet=false active="+activePlayers.length+" needAct="+playersNeedingToAct.length+" street="+this.street+" board="+this.board.length);
       if (!this.endHandTimer) {
         if (this.street === "river" || this.board.length >= 5) {
           this.actionSeat = null;
@@ -731,11 +749,9 @@ export class PokerTable {
   private runBoardOut(): void {
     // Prevent double-scheduling
     if (this.endHandTimer || this.runningOut) {
-      console.log("[RUNOUT BLOCKED] endHandTimer="+(this.endHandTimer?'SET':'null')+' runningOut='+this.runningOut+' betweenHands='+this.betweenHands);
-      return;
+return;
     }
-    console.log("[RUNOUT START] board="+this.board.length+" street="+this.street);
-    this.runningOut = true;
+this.runningOut = true;
 
     this.actionSeat = null;
     this.clearTurnTimer();

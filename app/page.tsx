@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface Card { r: string; s: string; red: boolean; }
 interface Seat { id: string; name: string; chips: number; bet: number; cards: Card[]|"back"|null; folded: boolean; allIn: boolean; inHand: boolean; isButton: boolean; isTurn: boolean; isBot: boolean; idleMs: number; lastAction?: { label: string; amount?: number; ts: number }; sittingOut?: boolean; }
-interface YouState { seat: number; chips: number; myTurn: boolean; canCheck: boolean; toCall: number; minRaiseTo: number; maxRaiseTo: number; inHand: boolean; allIn: boolean; }
+interface YouState { seat: number; chips: number; myTurn: boolean; canCheck: boolean; toCall: number; minRaiseTo: number; maxRaiseTo: number; inHand: boolean; allIn: boolean; sittingOut?: boolean; }
 interface TableState { id: string; name: string; sb: number; bb: number; maxSeats: number; seats: (Seat|null)[]; board: Card[]; pot: number; currentBet: number; street: string|null; handActive: boolean; seated: number; actionLog: { name: string; label: string; amount?: number }[]; lastResult?: { winners: { name: string; amount: number; hand: string; seat: number }[]; rake: number; reveal: boolean; winCards?: string[] }; chat: { id: string; seat: number; name: string; text: string }[]; pots?: { amount: number; label: string }[]; you: YouState|null; }
 interface LobbyTable { id: string; name: string; seated: number; maxSeats: number; inHand: boolean; sb: number; bb: number; minSol: number; maxSol: number; }
 
@@ -74,7 +74,7 @@ const Sounds = {
 // ── Card ──────────────────────────────────────────────────────────────────────
 function PlayingCard({ card, small, highlight }: { card: Card|"back"|null; small?: boolean; highlight?: boolean }) {
   if (!card) return null;
-  const w=small?28:44; const h=small?40:62; const fs=small?8:11;
+  const w=small?28:52; const h=small?40:72; const fs=small?8:12;
   if (card==="back") return (
     <div style={{width:w,height:h,borderRadius:5,background:"linear-gradient(135deg,#1e1b4b,#312e81)",border:"1px solid #4338ca",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
       <div style={{width:"78%",height:"78%",borderRadius:3,border:"1px solid rgba(99,102,241,0.3)",background:"repeating-linear-gradient(45deg,transparent,transparent 3px,rgba(99,102,241,0.08) 3px,rgba(99,102,241,0.08) 6px)"}}/>
@@ -367,6 +367,9 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy }: {
           <button onClick={()=>setChatOpen(o=>!o)} style={{padding:"4px 8px",background:"rgba(30,41,59,0.6)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:6,color:"#94a3b8",fontSize:11,cursor:"pointer",position:"relative"}}>
             💬{table.chat?.length>0&&<span style={{marginLeft:3}}>{table.chat.length}</span>}
           </button>
+          {you && !you.sittingOut && !you.inHand && (
+            <button onClick={()=>onAct({type:'sit_out'} as any)} style={{padding:"4px 8px",background:"transparent",border:"1px solid #475569",borderRadius:6,color:"#64748b",fontSize:10,fontWeight:600,cursor:"pointer"}}>⏸</button>
+          )}
           <button onClick={onLeave} style={{padding:"4px 10px",background:"rgba(127,29,29,0.5)",border:"1px solid #7f1d1d",borderRadius:6,color:"#fca5a5",fontSize:11,fontWeight:700,cursor:"pointer"}}>LEAVE</button>
         </div>
       </div>
@@ -508,8 +511,22 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy }: {
           </div>
         ) : you?.allIn && table.handActive && !table.lastResult ? (
           <div style={{textAlign:"center",color:"#f97316",fontSize:13,padding:"8px 0",fontWeight:600}}>🔥 All-in — waiting for board…</div>
+        ) : you && you.sittingOut ? (
+          <div style={{display:"flex",flexDirection:"column",gap:8,alignItems:"center",padding:"6px 0"}}>
+            <div style={{color:"#64748b",fontSize:12}}>⏸ On a break</div>
+            <button onClick={()=>onAct({type:'sit_in'} as any)}
+              style={{padding:"10px 24px",background:"rgba(34,197,94,0.2)",border:"2px solid #22c55e",borderRadius:10,color:"#22c55e",fontWeight:700,fontSize:14,cursor:"pointer"}}>
+              ▶ COME BACK
+            </button>
+          </div>
         ) : you && !you.inHand ? (
-          <div style={{textAlign:"center",color:"#64748b",fontSize:12,padding:"8px 0"}}>⏳ Sitting out — dealt in next hand</div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"6px 0"}}>
+            <div style={{color:"#64748b",fontSize:12}}>⏳ Dealt next hand</div>
+            <button onClick={()=>onAct({type:"sit_out"} as any)}
+              style={{padding:"6px 14px",background:"transparent",border:"1px solid #475569",borderRadius:8,color:"#64748b",fontWeight:600,fontSize:11,cursor:"pointer"}}>
+              ⏸ BREAK
+            </button>
+          </div>
         ) : (
           <div style={{textAlign:"center"}}>{onSitDown&&<button onClick={()=>onSitDown?.()} style={{padding:"10px 24px",background:"#4338ca",color:"#fff",border:"none",borderRadius:9,fontSize:14,fontWeight:700,cursor:"pointer"}}>SIT DOWN</button>}</div>
         )}
@@ -945,7 +962,7 @@ export default function App() {
       {view==="table" && table ? (
         <TableView
           table={table}
-          onAct={a=>send({type:"act",tableId:table.id,action:a,playerSeed:seed})}
+          onAct={a=>{ if((a as any).type==='sit_out'){send({type:'sit_out',tableId:table.id});}else if((a as any).type==='sit_in'){send({type:'sit_in',tableId:table.id});}else{send({type:'act',tableId:table.id,action:a,playerSeed:seed});}  }}
           onChat={t=>send({type:"chat",tableId:table.id,text:t})}
           onLeave={handleLeave}
           onSitDown={(seatIdx)=>{ setSelectedSeat(seatIdx??null); setSitConfirmAmt("1000"); }}
