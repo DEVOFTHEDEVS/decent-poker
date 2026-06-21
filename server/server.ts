@@ -278,6 +278,15 @@ export class PokerServer {
         break;
       }
 
+      case "room_info": {
+        // Lightweight query to get room currency before joining
+        const { roomId: riId } = msg as any;
+        const riRoom = this.dynamicRooms.get(riId);
+        if (!riRoom) { this.send(client.ws, { type: "room_info", currency: "chips", found: false }); return; }
+        this.send(client.ws, { type: "room_info", currency: riRoom.currency || "chips", found: true });
+        break;
+      }
+
       case "join_room": {
         const { roomId: jrId, name: jrName, playerSeed: jrSeed } = msg;
         const jrChips = (msg as any).chips;
