@@ -162,25 +162,14 @@ function useWS(url: string) {
         const joinRoomId = typeof sessionStorage!=="undefined" ? sessionStorage.getItem("join_room_id") : null;
         const joinRoomName = typeof sessionStorage!=="undefined" ? sessionStorage.getItem("join_room_name") : null;
         if (joinRoomId && joinRoomName) {
-          // Keep join_room_id until we get a successful joined response
-          // so reconnects can retry
-          let joinSeed = typeof sessionStorage!=="undefined" ? sessionStorage.getItem("player_seed") : null;
-          if (!joinSeed) { joinSeed = genSeed(); if (typeof sessionStorage!=="undefined") sessionStorage.setItem("player_seed", joinSeed); }
+          // Spectate first so player can pick seat and buy-in amount
           const joinCurrency = typeof sessionStorage!=="undefined" ? (sessionStorage.getItem("room_currency") || "chips") : "chips";
-          if (typeof sessionStorage!=="undefined") sessionStorage.setItem("table_currency", joinCurrency);
-          // Get custom buy-in if set on invite page
-          const joinBuyInRaw = typeof sessionStorage!=="undefined" ? sessionStorage.getItem("join_room_buyin") : null;
-          let joinChips: number | undefined;
-          if (joinBuyInRaw) {
-            const amt = parseFloat(joinBuyInRaw);
-            if (!isNaN(amt) && amt > 0) {
-              if (joinCurrency === "usd") joinChips = Math.round(amt * 100);
-              else if (joinCurrency === "sol") joinChips = Math.round(amt * 1e9);
-              else joinChips = Math.round(amt);
-            }
-            if (typeof sessionStorage!=="undefined") sessionStorage.removeItem("join_room_buyin");
+          if (typeof sessionStorage!=="undefined") {
+            sessionStorage.setItem("table_currency", joinCurrency);
+            sessionStorage.setItem("pending_join_name", joinRoomName);
+            sessionStorage.setItem("pending_join_room", joinRoomId);
           }
-          s.send(JSON.stringify({ type:"join_room", roomId:joinRoomId, name:joinRoomName, playerSeed:joinSeed, currency:joinCurrency, ...(joinChips ? {chips:joinChips} : {}) }));
+          s.send(JSON.stringify({ type:"spectate_room", roomId:joinRoomId }));
           return;
         }
 
@@ -240,11 +229,11 @@ function useWS(url: string) {
           }
           else if (m.type==="kicked") { setTable(null); setError("You were removed from the table."); if (typeof sessionStorage!=="undefined") sessionStorage.removeItem("current_table_id"); }
           else if (m.type==="spectating") {
-            // Show table as spectator so user can pick their seat
+            // Show table as spectator - user will click a seat to join
             setTable({...m.table});
             if (typeof sessionStorage!=="undefined") {
               if (m.currency) sessionStorage.setItem("table_currency", m.currency);
-              if (m.roomId) sessionStorage.setItem("current_room_id", m.roomId);
+              // DON'T clear join_room_id yet - needed for when they sit down
             }
           }
         } catch(e) { console.error("WS parse error",e); }
@@ -1053,25 +1042,25 @@ export default function App() {
                 const raw = parseFloat(sitConfirmAmt)||1000;
                 // Convert to internal units
                 const chips = cur==="usd" ? Math.round(raw*100) : cur==="sol" ? Math.round(raw*1e9) : Math.round(raw);
-                const roomId = typeof sessionStorage!=="undefined" ? sessionStorage.getItem("current_room_id") : null;
+                const pendingRoom = typeof sessionStorage!=="undefined" ? sessionStorage.getItem("pending_join_room") : null;
                 const pendingName = typeof sessionStorage!=="undefined" ? sessionStorage.getItem("pending_join_name") : null;
                 const playerName = pendingName || getPlayerName();
-                if (roomId) {
-                  // Joining via invite link - use join_room with chosen buy-in
+                if (pendingRoom) {
+                  // Joining via invite — use join_room with player's chosen buy-in
                   let joinSeed = typeof sessionStorage!=="undefined" ? sessionStorage.getItem("player_seed") : null;
                   if (!joinSeed) { joinSeed = genSeed(); if (typeof sessionStorage!=="undefined") sessionStorage.setItem("player_seed", joinSeed); }
-                  send({type:"join_room", roomId, name:playerName, playerSeed:joinSeed, currency:cur, chips});
+                  send({type:"join_room", roomId:pendingRoom, name:playerName, playerSeed:joinSeed, currency:cur, chips});
                   if (typeof sessionStorage!=="undefined") {
                     sessionStorage.removeItem("join_room_id");
                     sessionStorage.removeItem("join_room_name");
-                    sessionStorage.removeItem("current_room_id");
+                    sessionStorage.removeItem("pending_join_room");
                     sessionStorage.removeItem("pending_join_name");
                   }
                 } else if (cur === "sol") {
                   const sig = `dev_${Date.now()}_${seed.slice(0,8)}`;
                   send({type:"join", tableId:table.id, lamports:chips, signature:sig, name:playerName, playerSeed:seed});
                 } else {
-                  send({type:"practice", tableId:table.id, name:playerName, playerSeed:seed, chips});
+                  send({type:"practice", tableId:table.id, name:getPlayerName(), playerSeed:seed, chips});
                 }
                 setSelectedSeat(null);
               }} style={{flex:2,padding:"11px 0",borderRadius:12,background:"#4338ca",border:"none",color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer"}}>SIT DOWN</button>
