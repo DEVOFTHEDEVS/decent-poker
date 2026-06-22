@@ -255,6 +255,7 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy, onPause 
 }) {
   const [chatText, setChatText] = useState("");
   const [chatOpen, setChatOpen] = useState(false);
+  const [hoveredBtn, setHoveredBtn] = useState<string|null>(null);
   const [raiseAmt, setRaiseAmt] = useState(0);
   const [timeLeft, setTimeLeft] = useState(20);
   const [autoAction, setAutoAction] = useState<"checkFold"|"callAny"|"check"|null>(null);
