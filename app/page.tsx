@@ -15,7 +15,7 @@ const sol = (l: number) => (l / 1e9).toFixed(3);
 // sol mode: values stored as lamports (1 SOL = 1_000_000_000)
 // usd mode: same as chip mode but shows $ prefix
 function displayAmount(l: number, mode?: string): string {
-  const m = mode || (typeof sessionStorage !== "undefined" ? sessionStorage.getItem("table_currency") : null) || "sol";
+  const m = mode || (typeof sessionStorage !== "undefined" ? sessionStorage.getItem("table_currency") : null) || "chips";
   if (m === "chips") {
     return l >= 1000 ? l.toLocaleString() : l.toString();
   }
@@ -918,6 +918,8 @@ export default function App() {
   // Auto-prompt rebuy when player busts - only after hand ends
   useEffect(() => {
     if (table?.you && table.you.chips <= 0 && !table.handActive && !showRebuy) {
+      const cur = typeof sessionStorage!=="undefined" ? sessionStorage.getItem("table_currency")||"chips" : "chips";
+      setRebuyAmt(cur==="usd"?"50":cur==="sol"?"1":"1000");
       setTimeout(() => setShowRebuy(true), 1500);
     }
   }, [table?.you?.chips, table?.handActive]);
@@ -985,7 +987,11 @@ export default function App() {
           onAct={a=>send({type:"act",tableId:table.id,action:a,playerSeed:seed})}
           onChat={t=>send({type:"chat",tableId:table.id,text:t})}
           onLeave={handleLeave}
-          onSitDown={(seatIdx)=>{ setSelectedSeat(seatIdx??null); setSitConfirmAmt("1000"); }}
+          onSitDown={(seatIdx)=>{
+            setSelectedSeat(seatIdx??null);
+            const cur = typeof sessionStorage!=="undefined" ? sessionStorage.getItem("table_currency")||"chips" : "chips";
+            setSitConfirmAmt(cur==="usd"?"50":cur==="sol"?"1":"1000");
+          }}
           onRebuy={()=>setShowRebuy(true)}
           onPause={()=>{
             // Use current seat state from the seats array (more reliable than you.sittingOut)
