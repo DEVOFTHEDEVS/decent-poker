@@ -30,7 +30,7 @@ export class PokerServer {
   private wss: WebSocketServer;
   private tables: Map<string, PokerTable>;
   private clients: Map<WebSocket, ConnectedClient>;
-  private dynamicRooms: Map<string, { tableId: string; createdAt: number; startingChips: number; currency: string }>; // roomId → tableId
+  private dynamicRooms: Map<string, { tableId: string; createdAt: number; startingChips: number; currency: string; seatMemory: Map<string, number> }>; // roomId → tableId
   private disconnectTimers: Map<string, ReturnType<typeof setTimeout>>; // playerId → timer
   private pingInterval: ReturnType<typeof setInterval>;
 
@@ -268,6 +268,7 @@ export class PokerServer {
         if (roomRecord) {
           roomRecord.startingChips = startChips;
           roomRecord.currency = (msg as any).currency || 'chips';
+          if (!roomRecord.seatMemory) roomRecord.seatMemory = new Map();
         }
         // Also tag the table itself with currency for easy lookup
         (crTable as any)._currency = (msg as any).currency || 'chips';
@@ -276,6 +277,12 @@ export class PokerServer {
         client.tableId = crTable["cfg"].id;
         client.isSpectator = false;
         crTable.sitDown(playerId, crName || "Host", startChips, crSeed);
+        // Remember host's seat
+        const hostState = crTable.getClientState(playerId);
+        if (hostState.you && roomRecord) {
+          if (!roomRecord.seatMemory) roomRecord.seatMemory = new Map();
+          roomRecord.seatMemory.set((crName || "Host").toLowerCase().trim(), hostState.you.seat);
+        }
         const roomUrl = `/table/${roomId}`;
         this.send(client.ws, { type: "room_created", roomId, url: roomUrl, table: crTable.getClientState(playerId), currency: (msg as any).currency || 'chips' });
         break;
@@ -321,8 +328,18 @@ export class PokerServer {
         client.isSpectator = false;
         // Use player's chosen buy-in if provided, otherwise fall back to room default
         const tableChips = jrChips || roomInfo.startingChips || 1000;
-        const jrPreferredSeat = (msg as any).preferredSeat;
-        const ok = jrTable.sitDown(playerId, jrName || "Player", tableChips, jrSeed, undefined, jrPreferredSeat);
+        // Check if this name has a saved seat
+        const jrName2 = jrName || "Player";
+        const savedSeat = roomInfo.seatMemory?.get(jrName2.toLowerCase().trim());
+        const jrPreferredSeat = savedSeat ?? (msg as any).preferredSeat;
+        const ok = jrTable.sitDown(playerId, jrName2, tableChips, jrSeed, undefined, jrPreferredSeat);
+        // Save seat for this name
+        if (ok) {
+          const seatIdx = jrTable.getClientState(playerId).you?.seat;
+          if (seatIdx !== undefined && roomInfo.seatMemory) {
+            roomInfo.seatMemory.set(jrName2.toLowerCase().trim(), seatIdx);
+          }
+        }
         if (!ok) { this.send(client.ws, { type: "error", message: "Room is full" }); return; }
         this.send(client.ws, { type: "joined", table: jrTable.getClientState(playerId), currency: roomInfo.currency || 'chips' });
         break;
@@ -552,7 +569,7 @@ export class PokerServer {
     const table = new PokerTable(cfg);
     table.onStateChange = (t: any) => this.broadcastTableState(t);
     this.tables.set(tableId, table);
-    this.dynamicRooms.set(roomId, { tableId, createdAt: Date.now(), startingChips: 1000, currency: 'chips' });
+    this.dynamicRooms.set(roomId, { tableId, createdAt: Date.now(), startingChips: 1000, currency: 'chips', seatMemory: new Map() });
     // Clean up empty rooms after 2 hours
     setTimeout(() => {
       const info = this.dynamicRooms.get(roomId);
