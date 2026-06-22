@@ -187,11 +187,20 @@ function useWS(url: string) {
           return;
         }
 
-        // Try to rejoin previous session
-        const prevTableId = typeof sessionStorage!=="undefined" ? sessionStorage.getItem("current_table_id") : null;
-        const prevSeed = typeof sessionStorage!=="undefined" ? sessionStorage.getItem("player_seed") : null;
+        // Try to rejoin - check sessionStorage first, then localStorage backup
+        let prevTableId = typeof sessionStorage!=="undefined" ? sessionStorage.getItem("current_table_id") : null;
+        let prevSeed = typeof sessionStorage!=="undefined" ? sessionStorage.getItem("player_seed") : null;
+        // Restore from localStorage if sessionStorage was cleared (tab close)
+        if (!prevTableId && typeof localStorage!=="undefined") {
+          prevTableId = localStorage.getItem("last_table_id");
+          prevSeed = localStorage.getItem("last_player_seed");
+          if (prevTableId && prevSeed && typeof sessionStorage!=="undefined") {
+            sessionStorage.setItem("current_table_id", prevTableId);
+            sessionStorage.setItem("player_seed", prevSeed);
+          }
+        }
         if (prevTableId && prevSeed) {
-          const mySavedSeat = typeof sessionStorage!=="undefined" ? sessionStorage.getItem("my_seat_index") : null;
+          const mySavedSeat = typeof sessionStorage!=="undefined" ? localStorage.getItem("my_seat_index") : null;
           s.send(JSON.stringify({ type:"rejoin", tableId:prevTableId, playerSeed:prevSeed, ...(mySavedSeat!==null?{preferredSeat:parseInt(mySavedSeat)}:{}) }));
         } else {
           s.send(JSON.stringify({type:"lobby"}));
@@ -205,7 +214,7 @@ function useWS(url: string) {
             setTable({...m.table});
             if (m.table?.you && typeof sessionStorage!=="undefined") {
               sessionStorage.setItem("current_table_id", m.table.id);
-              sessionStorage.setItem("my_seat_index", String(m.table.you.seat));
+              localStorage.setItem("my_seat_index", String(m.table.you.seat));
               sessionStorage.removeItem("join_room_id");
               sessionStorage.removeItem("join_room_name");
             }
@@ -970,6 +979,11 @@ export default function App() {
   function handleLeave() {
     if (table) send({ type:"cashout", tableId:table.id });
     sessionStorage.removeItem("current_table_id");
+    if (typeof localStorage!=="undefined") {
+      localStorage.removeItem("last_table_id");
+      localStorage.removeItem("last_player_seed");
+      localStorage.removeItem("my_seat_index");
+    }
     setTable(null);
     setView("home");
     send({ type:"lobby" });
