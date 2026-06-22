@@ -239,6 +239,14 @@ function useWS(url: string) {
             s.send(JSON.stringify({type:"lobby"}));
           }
           else if (m.type==="kicked") { setTable(null); setError("You were removed from the table."); if (typeof sessionStorage!=="undefined") sessionStorage.removeItem("current_table_id"); }
+          else if (m.type==="spectating") {
+            // Show table as spectator so user can pick their seat
+            setTable({...m.table});
+            if (typeof sessionStorage!=="undefined") {
+              if (m.currency) sessionStorage.setItem("table_currency", m.currency);
+              if (m.roomId) sessionStorage.setItem("current_room_id", m.roomId);
+            }
+          }
         } catch(e) { console.error("WS parse error",e); }
       };
       s.onclose = () => { setConnected(false); if (!dead) setTimeout(connect, 2000); };
@@ -1045,11 +1053,25 @@ export default function App() {
                 const raw = parseFloat(sitConfirmAmt)||1000;
                 // Convert to internal units
                 const chips = cur==="usd" ? Math.round(raw*100) : cur==="sol" ? Math.round(raw*1e9) : Math.round(raw);
-                if (cur === "sol") {
+                const roomId = typeof sessionStorage!=="undefined" ? sessionStorage.getItem("current_room_id") : null;
+                const pendingName = typeof sessionStorage!=="undefined" ? sessionStorage.getItem("pending_join_name") : null;
+                const playerName = pendingName || getPlayerName();
+                if (roomId) {
+                  // Joining via invite link - use join_room with chosen buy-in
+                  let joinSeed = typeof sessionStorage!=="undefined" ? sessionStorage.getItem("player_seed") : null;
+                  if (!joinSeed) { joinSeed = genSeed(); if (typeof sessionStorage!=="undefined") sessionStorage.setItem("player_seed", joinSeed); }
+                  send({type:"join_room", roomId, name:playerName, playerSeed:joinSeed, currency:cur, chips});
+                  if (typeof sessionStorage!=="undefined") {
+                    sessionStorage.removeItem("join_room_id");
+                    sessionStorage.removeItem("join_room_name");
+                    sessionStorage.removeItem("current_room_id");
+                    sessionStorage.removeItem("pending_join_name");
+                  }
+                } else if (cur === "sol") {
                   const sig = `dev_${Date.now()}_${seed.slice(0,8)}`;
-                  send({type:"join", tableId:table.id, lamports:chips, signature:sig, name:getPlayerName(), playerSeed:seed});
+                  send({type:"join", tableId:table.id, lamports:chips, signature:sig, name:playerName, playerSeed:seed});
                 } else {
-                  send({type:"practice", tableId:table.id, name:getPlayerName(), playerSeed:seed, chips});
+                  send({type:"practice", tableId:table.id, name:playerName, playerSeed:seed, chips});
                 }
                 setSelectedSeat(null);
               }} style={{flex:2,padding:"11px 0",borderRadius:12,background:"#4338ca",border:"none",color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer"}}>SIT DOWN</button>

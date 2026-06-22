@@ -278,6 +278,20 @@ export class PokerServer {
         break;
       }
 
+      case "spectate_room": {
+        // Join as spectator so user can pick seat and buy-in
+        const { roomId: srId } = msg as any;
+        const srRoom = this.dynamicRooms.get(srId);
+        if (!srRoom) { this.send(client.ws, { type: "error", message: "Room not found — ask the host for a new link." }); return; }
+        const srTable = this.tables.get(srRoom.tableId);
+        if (!srTable) { this.send(client.ws, { type: "error", message: "Room not found." }); return; }
+        client.tableId = srRoom.tableId;
+        client.isSpectator = true;
+        // Send table state as spectator (no you state)
+        this.send(client.ws, { type: "spectating", table: srTable.getClientState(null), currency: srRoom.currency || "chips", roomId: srId });
+        break;
+      }
+
       case "room_info": {
         // Lightweight query to get room currency before joining
         const { roomId: riId } = msg as any;
