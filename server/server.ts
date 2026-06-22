@@ -269,6 +269,8 @@ export class PokerServer {
           roomRecord.startingChips = startChips;
           roomRecord.currency = (msg as any).currency || 'chips';
         }
+        // Also tag the table itself with currency for easy lookup
+        (crTable as any)._currency = (msg as any).currency || 'chips';
         const playerId = `room_${crSeed.slice(0, 12)}`;
         client.playerId = playerId;
         client.tableId = crTable["cfg"].id;
@@ -356,8 +358,14 @@ export class PokerServer {
           client.tableId = rjTableId;
           client.isSpectator = false;
           console.log(`[RECONNECT] ${foundId} rejoined ${rjTableId}`);
-          // Always include currency so client displays correctly after refresh
-          const roomCurrency = this.dynamicRooms.get(rjTableId)?.currency || 'chips';
+          // Find currency - check table tag first, then search dynamicRooms
+          let roomCurrency = (rjTable as any)._currency || 'chips';
+          if (roomCurrency === 'chips') {
+            for (const [, roomRecord] of this.dynamicRooms) {
+              if (roomRecord.tableId === rjTableId) { roomCurrency = roomRecord.currency || 'chips'; break; }
+            }
+          }
+          console.log(`[RECONNECT] currency=${roomCurrency} for table ${rjTableId}`);
           this.send(client.ws, { type: "joined", table: rjTable.getClientState(foundId), currency: roomCurrency });
         } else {
           // Not found — send lobby instead of error so they can rejoin
