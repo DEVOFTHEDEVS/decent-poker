@@ -110,27 +110,19 @@ export class PokerServer {
     if (client.tableId && client.playerId && !client.isSpectator) {
       const playerId = client.playerId;
       const tableId = client.tableId;
+      const table = this.tables.get(tableId);
 
-      // Grace period: keep player seated for 60s so they can reconnect
-      // If they reconnect within 60s, cancel the timer
-      const timer = setTimeout(() => {
-        this.disconnectTimers.delete(playerId);
-        const table = this.tables.get(tableId);
-        if (table) {
-          // Only remove if they haven't reconnected (no active client with this playerId)
-          const stillConnected = Array.from(this.clients.values()).some(c => c.playerId === playerId);
-          if (!stillConnected) {
-            console.log(`[DISCONNECT] Removing ${playerId} from ${tableId} after grace period`);
-            const chips = table.leave(playerId);
-            if (chips > 0 && this.onCashOut) {
-              this.onCashOut(playerId, chips, tableId).catch(console.error);
-            }
-          }
+      // Mark player as disconnected but KEEP them seated
+      // They stay at the table until they explicitly stand up
+      // Their turn timer will auto-fold their hands while away
+      if (table) {
+        const seat = (table as any).seats?.find((s: any) => s?.id === playerId);
+        if (seat) {
+          seat.sittingOut = true; // sit them out so they skip hands
+          (table as any).emit?.();
+          console.log(`[DISCONNECT] ${playerId} disconnected — keeping seat, sitting out`);
         }
-      }, 60_000); // 60 second grace period
-
-      this.disconnectTimers.set(playerId, timer);
-      console.log(`[DISCONNECT] ${playerId} disconnected — waiting 60s for reconnect`);
+      }
     }
   }
 
@@ -375,15 +367,16 @@ export class PokerServer {
           client.playerId = foundId;
           client.tableId = rjTableId;
           client.isSpectator = false;
+          // Unsit them - they're back
+          const rjSeat = (rjTable as any).seats?.find((s: any) => s?.id === foundId);
+          if (rjSeat) { rjSeat.sittingOut = false; (rjTable as any).emit?.(); }
           console.log(`[RECONNECT] ${foundId} rejoined ${rjTableId}`);
-          // Find currency - check table tag first, then search dynamicRooms
           let roomCurrency = (rjTable as any)._currency || 'chips';
           if (roomCurrency === 'chips') {
             for (const [, roomRecord] of this.dynamicRooms) {
               if (roomRecord.tableId === rjTableId) { roomCurrency = roomRecord.currency || 'chips'; break; }
             }
           }
-          console.log(`[RECONNECT] currency=${roomCurrency} for table ${rjTableId}`);
           this.send(client.ws, { type: "joined", table: rjTable.getClientState(foundId), currency: roomCurrency });
         } else {
           // Not found — send lobby instead of error so they can rejoin
