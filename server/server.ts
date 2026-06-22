@@ -254,7 +254,8 @@ export class PokerServer {
           const ok = ptable.sitDown(playerId, pname || "Player", PRACTICE_CHIPS, pseed, undefined, ptPreferredSeat);
           if (!ok) { this.send(client.ws, { type: "error", message: "Table full" }); return; }
         }
-        this.send(client.ws, { type: "joined", table: ptable.getClientState(playerId) });
+        const ptCurrency = this.dynamicRooms.get(ptid)?.currency || 'chips';
+        this.send(client.ws, { type: "joined", table: ptable.getClientState(playerId), currency: ptCurrency });
         break;
       }
 
@@ -355,9 +356,9 @@ export class PokerServer {
           client.tableId = rjTableId;
           client.isSpectator = false;
           console.log(`[RECONNECT] ${foundId} rejoined ${rjTableId}`);
-          // Send current state immediately - captures mid-runout board state
-          const currency = this.dynamicRooms.get(rjTableId)?.currency || 'chips';
-          this.send(client.ws, { type: "joined", table: rjTable.getClientState(foundId), currency });
+          // Always include currency so client displays correctly after refresh
+          const roomCurrency = this.dynamicRooms.get(rjTableId)?.currency || 'chips';
+          this.send(client.ws, { type: "joined", table: rjTable.getClientState(foundId), currency: roomCurrency });
         } else {
           // Not found — send lobby instead of error so they can rejoin
           this.sendLobby(client.ws);

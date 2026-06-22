@@ -195,14 +195,15 @@ function useWS(url: string) {
               sessionStorage.removeItem("join_room_id");
               sessionStorage.removeItem("join_room_name");
             }
-            if (m.currency && typeof sessionStorage!=="undefined") sessionStorage.setItem("table_currency", m.currency);
+            if (typeof sessionStorage!=="undefined") sessionStorage.setItem("table_currency", m.currency || sessionStorage.getItem("table_currency") || "chips");
           }
           else if (m.type==="room_created") {
             setRoomId(m.roomId); setTable({...m.table});
             if (typeof sessionStorage!=="undefined") {
               sessionStorage.setItem("current_table_id", m.table.id);
               sessionStorage.setItem("last_room_id", m.roomId);
-              if (m.currency) sessionStorage.setItem("table_currency", m.currency);
+              // Always persist currency so refresh restores it
+              sessionStorage.setItem("table_currency", m.currency || "chips");
             }
           }
           else if (m.type==="cashout") { setTable(null); if (typeof sessionStorage!=="undefined") sessionStorage.removeItem("current_table_id"); }
