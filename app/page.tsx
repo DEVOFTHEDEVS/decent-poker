@@ -34,24 +34,7 @@ const SUIT_COLOR: Record<string, string> = { "♥":"#dc2626","♦":"#dc2626","�
 function genSeed() { const a = new Uint8Array(16); if (typeof crypto!=="undefined") crypto.getRandomValues(a); return Array.from(a).map(b=>b.toString(16).padStart(2,"0")).join(""); }
 function getPlayerName() { return (typeof sessionStorage!=="undefined" && sessionStorage.getItem("player_name")) || "Player"; }
 
-// ── Button Styles ────────────────────────────────────────────────────────────
-const ACTION_BTN_CSS = `
-  .btn-call { flex:1; padding:13px 0; background:transparent; border:2px solid #22c55e; border-radius:8px; color:#22c55e; font-weight:800; font-size:14px; cursor:pointer; letter-spacing:0.5px; transition:all 0.12s ease; }
-  .btn-call:hover { background:rgba(34,197,94,0.18); box-shadow:0 0 20px rgba(34,197,94,0.6); transform:translateY(-1px); }
-  .btn-call:active { background:rgba(34,197,94,0.3); box-shadow:0 0 24px rgba(34,197,94,0.8); transform:translateY(0); }
-  .btn-raise { flex:1; padding:13px 0; background:transparent; border:2px solid #f59e0b; border-radius:8px; color:#f59e0b; font-weight:800; font-size:14px; cursor:pointer; letter-spacing:0.5px; transition:all 0.12s ease; }
-  .btn-raise:hover { background:rgba(245,158,11,0.18); box-shadow:0 0 20px rgba(245,158,11,0.6); transform:translateY(-1px); }
-  .btn-raise:active { background:rgba(245,158,11,0.3); box-shadow:0 0 24px rgba(245,158,11,0.8); transform:translateY(0); }
-  .btn-check { flex:1; padding:13px 0; background:transparent; border:2px solid #64748b; border-radius:8px; color:#94a3b8; font-weight:800; font-size:14px; cursor:pointer; letter-spacing:0.5px; transition:all 0.12s ease; }
-  .btn-check:hover { background:rgba(100,116,139,0.18); color:#e2e8f0; box-shadow:0 0 20px rgba(100,116,139,0.5); transform:translateY(-1px); }
-  .btn-check:active { background:rgba(100,116,139,0.3); color:#f1f5f9; box-shadow:0 0 24px rgba(100,116,139,0.7); transform:translateY(0); }
-  .btn-allin { flex:1; padding:13px 0; background:transparent; border:2px solid #f97316; border-radius:8px; color:#f97316; font-weight:800; font-size:14px; cursor:pointer; letter-spacing:0.5px; transition:all 0.12s ease; }
-  .btn-allin:hover { background:rgba(249,115,22,0.18); box-shadow:0 0 20px rgba(249,115,22,0.6); transform:translateY(-1px); }
-  .btn-allin:active { background:rgba(249,115,22,0.3); box-shadow:0 0 24px rgba(249,115,22,0.8); transform:translateY(0); }
-  .btn-fold { flex:1; padding:13px 0; background:transparent; border:2px solid #ef4444; border-radius:8px; color:#ef4444; font-weight:800; font-size:14px; cursor:pointer; letter-spacing:0.5px; transition:all 0.12s ease; }
-  .btn-fold:hover { background:rgba(239,68,68,0.18); box-shadow:0 0 20px rgba(239,68,68,0.6); transform:translateY(-1px); }
-  .btn-fold:active { background:rgba(239,68,68,0.3); box-shadow:0 0 24px rgba(239,68,68,0.8); transform:translateY(0); }
-`;
+// Button styles are in globals.css
 
 // ── Sound Engine ──────────────────────────────────────────────────────────────
 let audioCtx: AudioContext|null = null;
@@ -453,10 +436,6 @@ function AdminPanel({ table, onAdminAction, onClose }: {
   );
 }
 
-function ActionBtnStyles() {
-  return <style dangerouslySetInnerHTML={{__html: ACTION_BTN_CSS}} />;
-}
-
 function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy, onPause, isHost, onAdminAction }: {
   table: TableState; onAct:(a:any)=>void; onChat:(t:string)=>void; onLeave:()=>void; onSitDown?:(seatIdx?:number)=>void; onRebuy:()=>void; onPause:()=>void; isHost?:boolean; onAdminAction?:(action:string,name:string,amount?:number,newSeat?:number)=>void;
 }) {
@@ -576,7 +555,6 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy, onPause,
 
   return (
     <div style={{display:"flex",flexDirection:"column",height:"100dvh",background:"#0a0a0f",overflow:"hidden"}}>
-      <ActionBtnStyles/>
       {adminOpen && isHost && onAdminAction && <AdminPanel table={table} onAdminAction={onAdminAction} onClose={()=>setAdminOpen(false)} />}
 
       {/* TOP BAR */}
