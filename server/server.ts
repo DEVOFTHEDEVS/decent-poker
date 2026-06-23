@@ -30,7 +30,7 @@ export class PokerServer {
   private wss: WebSocketServer;
   private tables: Map<string, PokerTable>;
   private clients: Map<WebSocket, ConnectedClient>;
-  private dynamicRooms: Map<string, { tableId: string; createdAt: number; startingChips: number; currency: string; seatMemory: Map<string, number> }>; // roomId → tableId
+  private dynamicRooms: Map<string, { tableId: string; createdAt: number; startingChips: number; currency: string; seatMemory: Map<string, number>; hostId: string }>; // roomId → tableId
   private disconnectTimers: Map<string, ReturnType<typeof setTimeout>>; // playerId → timer
   private persistPath: string;
   private pingInterval: ReturnType<typeof setInterval>;
@@ -282,11 +282,12 @@ export class PokerServer {
         client.tableId = crTable["cfg"].id;
         client.isSpectator = false;
         crTable.sitDown(playerId, crName || "Host", startChips, crSeed);
-        // Remember host's seat
+        // Remember host's seat and ID
         const hostState = crTable.getClientState(playerId);
         if (hostState.you && roomRecord) {
           if (!roomRecord.seatMemory) roomRecord.seatMemory = new Map();
           roomRecord.seatMemory.set((crName || "Host").toLowerCase().trim(), hostState.you.seat);
+          roomRecord.hostId = playerId;
         }
         const roomUrl = `/table/${roomId}`;
         this.send(client.ws, { type: "room_created", roomId, url: roomUrl, table: crTable.getClientState(playerId), currency: (msg as any).currency || 'chips' });
@@ -390,7 +391,11 @@ export class PokerServer {
               if (roomRecord.tableId === rjTableId) { roomCurrency = roomRecord.currency || 'chips'; break; }
             }
           }
-          this.send(client.ws, { type: "joined", table: rjTable.getClientState(foundId), currency: roomCurrency });
+          // Find if this player is the host
+          let rjHostRoom: string | null = null;
+          for (const [rid, r] of this.dynamicRooms) { if (r.tableId === rjTableId) { rjHostRoom = rid; break; } }
+          const rjIsHost = rjHostRoom ? this.dynamicRooms.get(rjHostRoom)?.hostId === foundId : false;
+          this.send(client.ws, { type: "joined", table: rjTable.getClientState(foundId), currency: roomCurrency, isHost: rjIsHost });
         } else {
           // Not found — send lobby instead of error so they can rejoin
           this.sendLobby(client.ws);
@@ -410,6 +415,56 @@ export class PokerServer {
         if (!client.playerId || !client.tableId) return;
         const siTable = this.tables.get(client.tableId);
         if (siTable) siTable.sitIn(client.playerId);
+        break;
+      }
+
+      case "admin_action": {
+        if (!client.playerId || !client.tableId) return;
+        // Find the room and verify this client is the host
+        let hostRoom: string | null = null;
+        for (const [rid, room] of this.dynamicRooms) {
+          if (room.tableId === client.tableId) { hostRoom = rid; break; }
+        }
+        if (!hostRoom) return;
+        const room = this.dynamicRooms.get(hostRoom)!;
+        if (room.hostId !== client.playerId) {
+          this.send(client.ws, { type: "error", message: "Only the host can do that." });
+          return;
+        }
+        const table = this.tables.get(client.tableId);
+        if (!table) return;
+        const { action, targetName, amount, newSeat } = msg as any;
+
+        if (action === "give_chips") {
+          // Give/take chips from a player by name
+          const seat = (table as any).seats?.find((s: any) => s?.name?.toLowerCase() === targetName?.toLowerCase());
+          if (seat) {
+            seat.chips = Math.max(0, seat.chips + (amount || 0));
+            (table as any).emit?.();
+            console.log(`[ADMIN] Give chips: ${targetName} now has ${seat.chips}`);
+          }
+        } else if (action === "set_chips") {
+          const seat = (table as any).seats?.find((s: any) => s?.name?.toLowerCase() === targetName?.toLowerCase());
+          if (seat) {
+            seat.chips = Math.max(0, amount || 0);
+            (table as any).emit?.();
+          }
+        } else if (action === "move_seat") {
+          // Move player to a different seat
+          const seat = (table as any).seats?.find((s: any) => s?.name?.toLowerCase() === targetName?.toLowerCase());
+          const targetSeatEmpty = (table as any).seats?.[newSeat] === null;
+          if (seat && targetSeatEmpty && newSeat >= 0) {
+            const oldIdx = (table as any).seats?.indexOf(seat);
+            (table as any).seats[newSeat] = seat;
+            (table as any).seats[oldIdx] = null;
+            (table as any).emit?.();
+          }
+        } else if (action === "remove_player") {
+          const seat = (table as any).seats?.find((s: any) => s?.name?.toLowerCase() === targetName?.toLowerCase());
+          if (seat) {
+            table.leave(seat.id);
+          }
+        }
         break;
       }
 
@@ -576,7 +631,7 @@ export class PokerServer {
     const table = new PokerTable(cfg);
     table.onStateChange = (t: any) => this.broadcastTableState(t);
     this.tables.set(tableId, table);
-    this.dynamicRooms.set(roomId, { tableId, createdAt: Date.now(), startingChips: 1000, currency: 'chips', seatMemory: new Map() });
+    this.dynamicRooms.set(roomId, { tableId, createdAt: Date.now(), startingChips: 1000, currency: 'chips', seatMemory: new Map(), hostId: '' });
     // Clean up empty rooms after 2 hours
     setTimeout(() => {
       const info = this.dynamicRooms.get(roomId);

@@ -150,7 +150,7 @@ function EmptySeat({ pos, canSit, onClick, seatIdx }: {pos:{left:string;top:stri
 }
 
 // ── WS Hook ───────────────────────────────────────────────────────────────────
-function useWS(url: string) {
+function useWS(url: string, onMessage?: (m: any) => void) {
   const ws = useRef<WebSocket|null>(null);
   const [connected, setConnected] = useState(false);
   const [lobby, setLobby] = useState<LobbyTable[]>([]);
@@ -221,6 +221,7 @@ function useWS(url: string) {
       s.onmessage = e => {
         try {
           const m = JSON.parse(e.data);
+          if (onMessage) onMessage(m);
           if (m.type==="lobby") setLobby(m.tables);
           else if (m.type==="state"||m.type==="joined") {
             setTable({...m.table});
@@ -237,7 +238,6 @@ function useWS(url: string) {
             if (typeof sessionStorage!=="undefined") {
               sessionStorage.setItem("current_table_id", m.table.id);
               sessionStorage.setItem("last_room_id", m.roomId);
-              // Always persist currency so refresh restores it
               sessionStorage.setItem("table_currency", m.currency || "chips");
             }
           }
@@ -309,12 +309,84 @@ function BlindTimer({ table }: { table: TableState }) {
   );
 }
 
+function AdminPanel({ table, onAdminAction, onClose }: {
+  table: TableState;
+  onAdminAction: (action: string, targetName: string, amount?: number, newSeat?: number) => void;
+  onClose: () => void;
+}) {
+  const [chipAmt, setChipAmt] = useState<Record<string, string>>({});
+  const cur = typeof sessionStorage !== "undefined" ? sessionStorage.getItem("table_currency") || "chips" : "chips";
+  const isUSD = cur === "usd";
+
+  const seated = table.seats.filter((s): s is Seat => s !== null);
+
+  function applyChips(name: string) {
+    const raw = parseFloat(chipAmt[name] || "0");
+    if (!raw) return;
+    let lamports = isUSD ? Math.round(raw * 100) : Math.round(raw);
+    onAdminAction("set_chips", name, lamports);
+    setChipAmt(prev => ({ ...prev, [name]: "" }));
+  }
+
+  function addChips(name: string, amount: number) {
+    let lamports = isUSD ? Math.round(amount * 100) : Math.round(amount);
+    onAdminAction("give_chips", name, lamports);
+  }
+
+  return (
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={onClose}>
+      <div style={{background:"#0f172a",border:"1px solid rgba(245,158,11,0.3)",borderRadius:16,padding:20,width:"100%",maxWidth:420,maxHeight:"80vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+          <h3 style={{margin:0,color:"#f59e0b",fontWeight:800,fontSize:16}}>⚙ Host Controls</h3>
+          <button onClick={onClose} style={{background:"none",border:"none",color:"#64748b",fontSize:18,cursor:"pointer"}}>✕</button>
+        </div>
+
+        {seated.length === 0 ? (
+          <p style={{color:"#64748b",textAlign:"center"}}>No players seated</p>
+        ) : seated.map(seat => (
+          <div key={seat.id} style={{background:"rgba(30,41,59,0.6)",borderRadius:10,padding:12,marginBottom:8}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+              <span style={{color:"#f1f5f9",fontWeight:700,fontSize:14}}>{seat.name}</span>
+              <div style={{display:"flex",alignItems:"center",gap:6}}>
+                <span style={{color:"#22c55e",fontWeight:600,fontSize:13}}>{displayAmount(seat.chips)}</span>
+                {seat.sittingOut && <span style={{color:"#64748b",fontSize:10}}>BREAK</span>}
+              </div>
+            </div>
+            <div style={{display:"flex",gap:4,marginBottom:6}}>
+              {(isUSD?[10,20,50,100]:[500,1000,2000,5000]).map(v=>(
+                <button key={v} onClick={()=>addChips(seat.name, v)}
+                  style={{flex:1,padding:"4px 0",background:"rgba(34,197,94,0.15)",border:"1px solid rgba(34,197,94,0.3)",borderRadius:6,color:"#86efac",fontSize:11,fontWeight:600,cursor:"pointer"}}>
+                  +{isUSD?"$":""}{v}
+                </button>
+              ))}
+              {(isUSD?[10,20,50]:[500,1000,2000]).map(v=>(
+                <button key={-v} onClick={()=>addChips(seat.name, -v)}
+                  style={{flex:1,padding:"4px 0",background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.2)",borderRadius:6,color:"#fca5a5",fontSize:11,fontWeight:600,cursor:"pointer"}}>
+                  -{isUSD?"$":""}{v}
+                </button>
+              ))}
+            </div>
+            <div style={{display:"flex",gap:6}}>
+              <input type="number" placeholder={isUSD?"Set $ amount…":"Set chip amount…"} value={chipAmt[seat.name]||""} onChange={e=>setChipAmt(p=>({...p,[seat.name]:e.target.value}))}
+                style={{flex:1,background:"rgba(15,23,42,0.8)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:7,padding:"6px 10px",fontSize:13,color:"#f1f5f9",outline:"none"}}/>
+              <button onClick={()=>applyChips(seat.name)}
+                style={{padding:"6px 12px",background:"rgba(99,102,241,0.3)",border:"1px solid rgba(99,102,241,0.4)",borderRadius:7,color:"#a5b4fc",fontWeight:700,fontSize:12,cursor:"pointer"}}>SET</button>
+              <button onClick={()=>onAdminAction("remove_player", seat.name)}
+                style={{padding:"6px 10px",background:"rgba(127,29,29,0.3)",border:"1px solid rgba(127,29,29,0.4)",borderRadius:7,color:"#fca5a5",fontWeight:700,fontSize:12,cursor:"pointer"}}>KICK</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function ActionBtnStyles() {
   return <style dangerouslySetInnerHTML={{__html: ACTION_BTN_CSS}} />;
 }
 
-function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy, onPause }: {
-  table: TableState; onAct:(a:any)=>void; onChat:(t:string)=>void; onLeave:()=>void; onSitDown?:(seatIdx?:number)=>void; onRebuy:()=>void; onPause:()=>void;
+function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy, onPause, isHost, showAdmin, onAdminAction }: {
+  table: TableState; onAct:(a:any)=>void; onChat:(t:string)=>void; onLeave:()=>void; onSitDown?:(seatIdx?:number)=>void; onRebuy:()=>void; onPause:()=>void; isHost?:boolean; showAdmin?:boolean; onAdminAction?:(action:string,name:string,amount?:number,newSeat?:number)=>void;
 }) {
   const [chatText, setChatText] = useState("");
   const [chatOpen, setChatOpen] = useState(false);
@@ -432,6 +504,7 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy, onPause 
   return (
     <div style={{display:"flex",flexDirection:"column",height:"100dvh",background:"#0a0a0f",overflow:"hidden"}}>
       <ActionBtnStyles/>
+      {showAdmin && isHost && onAdminAction && <AdminPanel table={table} onAdminAction={onAdminAction} onClose={()=>{}} />}
 
       {/* TOP BAR */}
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"6px 10px",background:"rgba(15,23,42,0.95)",borderBottom:"1px solid rgba(255,255,255,0.06)",flexShrink:0}}>
@@ -990,9 +1063,23 @@ function ShareModal({ roomId, onClose }: { roomId:string; onClose:()=>void }) {
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "wss://decent-poker-production.up.railway.app";
 
 export default function App() {
-  const { connected, lobby, table, error, roomId, setRoomId, send, setTable } = useWS(WS_URL);
+  const { connected, lobby, table, error, roomId, setRoomId, send, setTable } = useWS(WS_URL, (m) => {
+    if (m.isHost === true) {
+      setIsHost(true);
+      if (typeof sessionStorage!=="undefined") sessionStorage.setItem("is_host","1");
+    }
+    if (m.type === "room_created" || m.type === "joined" || m.type === "state") {
+      // Reset isHost if server says not host (e.g. after reconnect as non-host)
+      if (m.isHost === false && typeof sessionStorage!=="undefined") {
+        sessionStorage.removeItem("is_host");
+        setIsHost(false);
+      }
+    }
+  });
   const [view, setView] = useState<"home"|"table">("home");
   const [showRebuy, setShowRebuy] = useState(false);
+  const [isHost, setIsHost] = useState(()=>typeof sessionStorage!=="undefined"&&sessionStorage.getItem("is_host")==="1");
+  const [showAdmin, setShowAdmin] = useState(false);
   const [rebuyAmt, setRebuyAmt] = useState("1000");
   const [selectedSeat, setSelectedSeat] = useState<number|null>(null);
   const [sitConfirmAmt, setSitConfirmAmt] = useState("1000");
