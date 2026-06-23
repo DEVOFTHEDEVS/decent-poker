@@ -133,6 +133,10 @@ export interface TableState {
   minSol: number;
   // serverSeedHash published before each hand for provably fair
   currentSeedHash: string;
+  // Blind schedule (tournament mode)
+  blindLevel?: number;
+  blindSchedule?: {sb: number; bb: number; durationMs: number}[] | null;
+  nextBlindTime?: number | null;
 }
 
 // ── Client View (player-specific) ────────────────────────────────────────────
@@ -220,4 +224,7 @@ export interface LobbyTable {
   bbSol: number;
   minSol: number;
   maxSol: number;
+  blindLevel?: number;
+  blindSchedule?: {sb: number; bb: number; durationMs: number}[] | null;
+  nextBlindTime?: number | null;
 }

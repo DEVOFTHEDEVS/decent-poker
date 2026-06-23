@@ -5,7 +5,7 @@ import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 interface Card { r: string; s: string; red: boolean; }
 interface Seat { id: string; name: string; chips: number; bet: number; cards: Card[]|"back"|null; folded: boolean; allIn: boolean; inHand: boolean; isButton: boolean; isTurn: boolean; isBot: boolean; idleMs: number; lastAction?: { label: string; amount?: number; ts: number }; sittingOut?: boolean; }
 interface YouState { seat: number; chips: number; myTurn: boolean; canCheck: boolean; toCall: number; minRaiseTo: number; maxRaiseTo: number; inHand: boolean; allIn: boolean; sittingOut?: boolean; }
-interface TableState { id: string; name: string; sb: number; bb: number; maxSeats: number; seats: (Seat|null)[]; board: Card[]; pot: number; currentBet: number; street: string|null; handActive: boolean; seated: number; actionLog: { name: string; label: string; amount?: number }[]; lastResult?: { winners: { name: string; amount: number; hand: string; seat: number }[]; rake: number; reveal: boolean; winCards?: string[] }; chat: { id: string; seat: number; name: string; text: string }[]; pots?: { amount: number; label: string }[]; you: YouState|null; }
+interface TableState { id: string; name: string; sb: number; bb: number; blindLevel?: number; blindSchedule?: any; nextBlindTime?: number; maxSeats: number; seats: (Seat|null)[]; board: Card[]; pot: number; currentBet: number; street: string|null; handActive: boolean; seated: number; actionLog: { name: string; label: string; amount?: number }[]; lastResult?: { winners: { name: string; amount: number; hand: string; seat: number }[]; rake: number; reveal: boolean; winCards?: string[] }; chat: { id: string; seat: number; name: string; text: string }[]; pots?: { amount: number; label: string }[]; you: YouState|null; }
 interface LobbyTable { id: string; name: string; seated: number; maxSeats: number; inHand: boolean; sb: number; bb: number; minSol: number; maxSol: number; }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -183,6 +183,11 @@ function useWS(url: string) {
             sessionStorage.setItem("pending_join_name", joinRoomName);
             sessionStorage.setItem("pending_join_room", joinRoomId);
           }
+          // Also save to localStorage so it survives tab close
+          if (typeof localStorage!=="undefined") {
+            localStorage.setItem("pending_join_name", joinRoomName);
+            localStorage.setItem("pending_join_room", joinRoomId);
+          }
           s.send(JSON.stringify({ type:"spectate_room", roomId:joinRoomId }));
           return;
         }
@@ -197,6 +202,13 @@ function useWS(url: string) {
           if (prevTableId && prevSeed && typeof sessionStorage!=="undefined") {
             sessionStorage.setItem("current_table_id", prevTableId);
             sessionStorage.setItem("player_seed", prevSeed);
+          }
+        }
+        // Restore pending room join from localStorage
+        if (typeof sessionStorage!=="undefined" && typeof localStorage!=="undefined") {
+          if (!sessionStorage.getItem("pending_join_room") && localStorage.getItem("pending_join_room")) {
+            sessionStorage.setItem("pending_join_room", localStorage.getItem("pending_join_room")!);
+            sessionStorage.setItem("pending_join_name", localStorage.getItem("pending_join_name") || "");
           }
         }
         if (prevTableId && prevSeed) {
@@ -231,22 +243,18 @@ function useWS(url: string) {
           }
           else if (m.type==="cashout") { setTable(null); if (typeof sessionStorage!=="undefined") sessionStorage.removeItem("current_table_id"); }
           else if (m.type==="error") {
-            if (m.message?.includes("Session expired") || m.message?.includes("Room not found")) {
-              // Try to recreate the room if we have saved settings (host reconnected)
-              const savedSettings = typeof sessionStorage!=="undefined" ? sessionStorage.getItem("last_room_settings") : null;
-              const savedRoomId = typeof sessionStorage!=="undefined" ? sessionStorage.getItem("last_room_id") : null;
-              if (savedSettings && savedRoomId) {
-                try {
-                  const settings = JSON.parse(savedSettings);
-                  const pSeed = typeof sessionStorage!=="undefined" ? sessionStorage.getItem("player_seed") : null;
-                  const pName = typeof sessionStorage!=="undefined" ? sessionStorage.getItem("player_name") : "Host";
-                  if (pSeed) {
-                    console.log("[RECONNECT] Recreating room with saved settings");
-                    s.send(JSON.stringify({ type:"create_room", name:pName||"Host", playerSeed:pSeed, sb:settings.sb, bb:settings.bb, maxPlayers:settings.maxPlayers, roomName:settings.name, chips:settings.chips, currency:settings.currency }));
-                    return;
-                  }
-                } catch(e) { /* ignore */ }
+            if (m.message?.includes("Room not found") || m.message?.includes("expired")) {
+              // Clear pending join state
+              if (typeof sessionStorage!=="undefined") {
+                sessionStorage.removeItem("pending_join_room");
+                sessionStorage.removeItem("pending_join_name");
+                sessionStorage.removeItem("join_room_id");
+                sessionStorage.removeItem("join_room_name");
               }
+              setError("Room not found — the host needs to create a new room and share a fresh link.");
+            } else if (m.message?.includes("Session expired")) {
+              setError(null);
+            } else {
               setError(m.message);
             }
             s.send(JSON.stringify({type:"lobby"}));
@@ -273,6 +281,34 @@ function useWS(url: string) {
 }
 
 // ── Table View ────────────────────────────────────────────────────────────────
+function BlindTimer({ table }: { table: TableState }) {
+  const [timeLeft, setTimeLeft] = useState<number>(0);
+  const schedule = (table as any).blindSchedule as {sb:number;bb:number;durationMs:number}[]|null;
+  const nextTime = (table as any).nextBlindTime as number|null;
+  const level = ((table as any).blindLevel as number) || 0;
+
+  useEffect(()=>{
+    if (!nextTime) return;
+    const iv = setInterval(()=>{
+      const left = Math.max(0, nextTime - Date.now());
+      setTimeLeft(left);
+    }, 1000);
+    return ()=>clearInterval(iv);
+  }, [nextTime]);
+
+  if (!schedule || !nextTime) return null;
+  const nextLevel = schedule[level+1];
+  const mins = Math.floor(timeLeft/60000);
+  const secs = Math.floor((timeLeft%60000)/1000);
+  const pct = nextTime ? (timeLeft / (schedule[level]?.durationMs||1)) * 100 : 0;
+
+  return (
+    <span style={{display:"inline-flex",alignItems:"center",gap:3,background:"rgba(245,158,11,0.1)",border:"1px solid rgba(245,158,11,0.2)",borderRadius:5,padding:"1px 5px",fontSize:9,color:"#f59e0b",fontWeight:700,cursor:"default"}} title={nextLevel?`Next: ${nextLevel.sb}/${nextLevel.bb}`:""}>
+      ⏱ L{level+1} {mins}:{secs.toString().padStart(2,"0")}
+    </span>
+  );
+}
+
 function ActionBtnStyles() {
   return <style dangerouslySetInnerHTML={{__html: ACTION_BTN_CSS}} />;
 }
@@ -628,6 +664,8 @@ function RoomSettings({ onConfirm, onCancel, playerName }: { onConfirm:(s:any)=>
   const [bbN, setBbN] = useState(currency==='usd'?0.50:currency==='sol'?0.10:10);
   const [chipsN, setChipsN] = useState<number|string>(currency==='usd'?50:currency==='sol'?1:1000);
   const [maxPlayers, setMaxPlayers] = useState(6);
+  const [blindsMode, setBlindsMode] = useState<"fixed"|"schedule">("fixed");
+  const [blindInterval, setBlindInterval] = useState(10); // minutes
   const [roomName, setRoomName] = useState(`${playerName}'s Table`);
 
   function toInternal(n: number) {
@@ -683,17 +721,46 @@ function RoomSettings({ onConfirm, onCancel, playerName }: { onConfirm:(s:any)=>
       {/* Blinds presets */}
       <div>
         <div style={{fontSize:10,color:"#64748b",marginBottom:4,fontWeight:600,letterSpacing:1}}>BLINDS</div>
-        <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:5}}>
-          {presetBlinds.map(p=>(
-            <button key={p.sb} onClick={()=>{setSbN(p.sb);setBbN(p.bb);}}
-              style={{padding:"4px 8px",borderRadius:6,fontSize:11,fontWeight:600,cursor:"pointer",
-                background:sbN===p.sb?"rgba(99,102,241,0.3)":"rgba(30,41,59,0.5)",
-                border:sbN===p.sb?"1px solid #6366f1":"1px solid rgba(255,255,255,0.06)",
-                color:sbN===p.sb?"#a5b4fc":"#64748b"}}>
-              {p.sb}/{p.bb}
-            </button>
-          ))}
-        </div>
+        {currency==="chips" && (
+          <div style={{display:"flex",gap:4,marginBottom:8}}>
+            {(["fixed","schedule"] as const).map(m=>(
+              <button key={m} onClick={()=>setBlindsMode(m)} style={{flex:1,padding:"5px 0",borderRadius:7,fontSize:11,fontWeight:700,cursor:"pointer",
+                background:blindsMode===m?"rgba(99,102,241,0.3)":"rgba(30,41,59,0.5)",
+                border:blindsMode===m?"1px solid #6366f1":"1px solid rgba(255,255,255,0.06)",
+                color:blindsMode===m?"#a5b4fc":"#64748b"}}>
+                {m==="fixed"?"Fixed":"⏱ Increasing"}
+              </button>
+            ))}
+          </div>
+        )}
+        {blindsMode==="schedule" && currency==="chips" ? (
+          <div>
+            <div style={{fontSize:10,color:"#475569",marginBottom:6}}>INCREASE EVERY</div>
+            <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:6}}>
+              {[5,10,15,20,30].map(m=>(
+                <button key={m} onClick={()=>setBlindInterval(m)} style={{padding:"4px 10px",borderRadius:6,fontSize:11,fontWeight:600,cursor:"pointer",
+                  background:blindInterval===m?"rgba(99,102,241,0.3)":"rgba(30,41,59,0.5)",
+                  border:blindInterval===m?"1px solid #6366f1":"1px solid rgba(255,255,255,0.06)",
+                  color:blindInterval===m?"#a5b4fc":"#64748b"}}>{m}m</button>
+              ))}
+            </div>
+            <div style={{fontSize:9,color:"#334155",padding:"4px 8px",background:"rgba(30,41,59,0.4)",borderRadius:6}}>
+              25/50 → 50/100 → 100/200 → 200/400 → 300/600 → ...
+            </div>
+          </div>
+        ) : (
+          <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:5}}>
+            {presetBlinds.map(p=>(
+              <button key={p.sb} onClick={()=>{setSbN(p.sb);setBbN(p.bb);}}
+                style={{padding:"4px 8px",borderRadius:6,fontSize:11,fontWeight:600,cursor:"pointer",
+                  background:sbN===p.sb?"rgba(99,102,241,0.3)":"rgba(30,41,59,0.5)",
+                  border:sbN===p.sb?"1px solid #6366f1":"1px solid rgba(255,255,255,0.06)",
+                  color:sbN===p.sb?"#a5b4fc":"#64748b"}}>
+                {p.sb}/{p.bb}
+              </button>
+            ))}
+          </div>
+        )}
         <div style={{display:"flex",gap:6}}>
           <div style={{flex:1}}>
             <div style={{fontSize:9,color:"#475569",marginBottom:2}}>SB</div>
@@ -1089,6 +1156,10 @@ export default function App() {
                     sessionStorage.removeItem("join_room_name");
                     sessionStorage.removeItem("pending_join_room");
                     sessionStorage.removeItem("pending_join_name");
+                  }
+                  if (typeof localStorage!=="undefined") {
+                    localStorage.removeItem("pending_join_room");
+                    localStorage.removeItem("pending_join_name");
                   }
                 } else if (cur === "sol") {
                   const sig = `dev_${Date.now()}_${seed.slice(0,8)}`;

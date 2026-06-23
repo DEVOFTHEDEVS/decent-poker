@@ -32,6 +32,7 @@ export class PokerServer {
   private clients: Map<WebSocket, ConnectedClient>;
   private dynamicRooms: Map<string, { tableId: string; createdAt: number; startingChips: number; currency: string; seatMemory: Map<string, number> }>; // roomId → tableId
   private disconnectTimers: Map<string, ReturnType<typeof setTimeout>>; // playerId → timer
+  private persistPath: string;
   private pingInterval: ReturnType<typeof setInterval>;
 
   // Injected dependencies
@@ -44,7 +45,11 @@ export class PokerServer {
     this.clients = new Map();
     this.dynamicRooms = new Map();
     this.disconnectTimers = new Map();
+    this.persistPath = '/tmp/decent-poker-rooms.json';
+    this.loadPersistedRooms();
     this.startWatchdog();
+    // Save rooms every 30 seconds
+    setInterval(() => this.persistRooms(), 30_000);
 
     // Initialize tables
     for (const cfg of TABLE_CONFIGS) {
@@ -264,6 +269,14 @@ export class PokerServer {
         }
         // Also tag the table itself with currency for easy lookup
         (crTable as any)._currency = (msg as any).currency || 'chips';
+        // Start blind schedule if provided
+        const blindSchedule = (msg as any).blindSchedule;
+        if (blindSchedule && Array.isArray(blindSchedule)) {
+          crTable.startBlindSchedule(blindSchedule);
+          console.log(`[BLINDS] Schedule started: ${blindSchedule.length} levels, ${blindSchedule[0].durationMs/60000}m each`);
+        }
+        // Persist immediately
+        this.persistRooms();
         const playerId = `room_${crSeed.slice(0, 12)}`;
         client.playerId = playerId;
         client.tableId = crTable["cfg"].id;
@@ -578,6 +591,49 @@ export class PokerServer {
         table.healthCheck();
       }
     }, 10_000);
+  }
+
+  private persistRooms(): void {
+    try {
+      const fs = require('fs');
+      const data = Array.from(this.dynamicRooms.entries()).map(([roomId, room]) => ({
+        roomId,
+        tableId: room.tableId,
+        createdAt: room.createdAt,
+        startingChips: room.startingChips,
+        currency: room.currency,
+        seatMemory: Array.from(room.seatMemory?.entries() || []),
+      }));
+      fs.writeFileSync(this.persistPath, JSON.stringify(data));
+    } catch(e) { /* ignore */ }
+  }
+
+  private loadPersistedRooms(): void {
+    try {
+      const fs = require('fs');
+      if (!fs.existsSync(this.persistPath)) return;
+      const data = JSON.parse(fs.readFileSync(this.persistPath, 'utf8'));
+      for (const r of data) {
+        // Only restore rooms created in last 12 hours
+        if (Date.now() - r.createdAt > 12 * 60 * 60 * 1000) continue;
+        // Recreate the table
+        const { roomId, table } = this.createRoom(10_000_000, 20_000_000, 6, 'Restored Room');
+        // The table gets a new ID, update the room record
+        this.dynamicRooms.delete(roomId); // remove the new one
+        const seatMemory = new Map(r.seatMemory || []);
+        this.dynamicRooms.set(r.roomId, { 
+          tableId: table['cfg'].id,
+          createdAt: r.createdAt,
+          startingChips: r.startingChips || 1000,
+          currency: r.currency || 'chips',
+          seatMemory,
+        });
+        // Tag table with currency
+        (table as any)._currency = r.currency || 'chips';
+        console.log(`[RESTORE] Room ${r.roomId} restored`);
+      }
+      console.log(`[RESTORE] Loaded ${data.length} rooms from disk`);
+    } catch(e) { console.log('[RESTORE] No saved rooms:', (e as any).message); }
   }
 
   close(): void {

@@ -50,6 +50,10 @@ export class PokerTable {
   private runningOut: boolean; // true while runBoardOut is in progress
   private betweenHands: boolean; // true from endHand until startHand begins
   private endHandTimer: ReturnType<typeof setTimeout> | null;
+  private blindTimer: ReturnType<typeof setTimeout> | null;
+  public blindLevel: number; // current level index
+  public blindSchedule: {sb: number; bb: number; durationMs: number}[] | null;
+  public nextBlindTime: number | null; // timestamp when next level starts
   private turnTimer: ReturnType<typeof setTimeout> | null;
   private handTimer: ReturnType<typeof setTimeout> | null;
   private version: number; // increments on every state change
@@ -85,6 +89,10 @@ export class PokerTable {
     this.runningOut = false;
     this.betweenHands = false;
     this.endHandTimer = null;
+    this.blindTimer = null;
+    this.blindLevel = 0;
+    this.blindSchedule = null;
+    this.nextBlindTime = null;
     this.turnTimer = null;
     this.handTimer = null;
     this.version = 0;
@@ -195,6 +203,48 @@ export class PokerTable {
     this.emit();
     if (!this.handActive && !this.handEnding && !this.betweenHands) this.maybeStartHand();
     return true;
+  }
+
+  /** Start a blind schedule - chips tournament mode */
+  startBlindSchedule(schedule: {sb: number; bb: number; durationMs: number}[]): void {
+    this.blindSchedule = schedule;
+    this.blindLevel = 0;
+    // Apply first level immediately
+    if (schedule.length > 0) {
+      this.cfg = { ...this.cfg, sb: schedule[0].sb, bb: schedule[0].bb };
+      this.emit();
+    }
+    this.scheduleNextBlindIncrease();
+  }
+
+  private scheduleNextBlindIncrease(): void {
+    if (!this.blindSchedule) return;
+    const currentLevel = this.blindSchedule[this.blindLevel];
+    if (!currentLevel) return;
+    if (this.blindTimer) clearTimeout(this.blindTimer);
+    this.nextBlindTime = Date.now() + currentLevel.durationMs;
+    this.blindTimer = setTimeout(() => {
+      this.blindLevel++;
+      const nextLevel = this.blindSchedule![this.blindLevel];
+      if (nextLevel) {
+        this.cfg = { ...this.cfg, sb: nextLevel.sb, bb: nextLevel.bb };
+        console.log(`[BLINDS] Level ${this.blindLevel + 1}: ${nextLevel.sb}/${nextLevel.bb}`);
+        this.emit();
+        this.scheduleNextBlindIncrease();
+      } else {
+        // Stay at last level
+        this.blindLevel = this.blindSchedule!.length - 1;
+        this.nextBlindTime = null;
+        console.log(`[BLINDS] Max level reached`);
+      }
+    }, currentLevel.durationMs);
+  }
+
+  /** Stop blind schedule */
+  stopBlindSchedule(): void {
+    if (this.blindTimer) { clearTimeout(this.blindTimer); this.blindTimer = null; }
+    this.blindSchedule = null;
+    this.nextBlindTime = null;
   }
 
   /** Pause a player - sit them out until they resume */
@@ -338,6 +388,9 @@ export class PokerTable {
       inHand: this.seats.filter(s => s?.inHand).length,
       sbSol: this.cfg.sb / LAMPORTS,
       bbSol: this.cfg.bb / LAMPORTS,
+      blindLevel: this.blindLevel,
+      blindSchedule: this.blindSchedule,
+      nextBlindTime: this.nextBlindTime,
       minSol: this.cfg.minBuyIn / LAMPORTS,
       you,
       currentSeedHash: this.serverSeedHash,
@@ -355,6 +408,9 @@ export class PokerTable {
       bb: this.cfg.bb,
       sbSol: this.cfg.sb / LAMPORTS,
       bbSol: this.cfg.bb / LAMPORTS,
+      blindLevel: this.blindLevel,
+      blindSchedule: this.blindSchedule,
+      nextBlindTime: this.nextBlindTime,
       minSol: this.cfg.minBuyIn / LAMPORTS,
       maxSol: this.cfg.maxBuyIn / LAMPORTS,
     };
@@ -636,7 +692,11 @@ export class PokerTable {
           this.emit();
           const capturedAdvHandId = this.handId;
           this.endHandTimer = setTimeout(() => { 
-            this.endHandTimer = null; 
+            this.endHandTimer = null;
+    this.blindTimer = null;
+    this.blindLevel = 0;
+    this.blindSchedule = null;
+    this.nextBlindTime = null; 
             if (this.handId !== capturedAdvHandId) return;
             this.endHand(true); 
           }, 800);
@@ -835,6 +895,10 @@ this.runningOut = true;
     const capturedEndHandId = this.handId;
     this.endHandTimer = setTimeout(() => {
       this.endHandTimer = null;
+    this.blindTimer = null;
+    this.blindLevel = 0;
+    this.blindSchedule = null;
+    this.nextBlindTime = null;
       if (this.handId !== capturedEndHandId) return; // stale timer
       this.endHand(true);
     }, delay);
