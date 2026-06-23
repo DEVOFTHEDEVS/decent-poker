@@ -385,11 +385,12 @@ function ActionBtnStyles() {
   return <style dangerouslySetInnerHTML={{__html: ACTION_BTN_CSS}} />;
 }
 
-function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy, onPause, isHost, showAdmin, onAdminAction }: {
-  table: TableState; onAct:(a:any)=>void; onChat:(t:string)=>void; onLeave:()=>void; onSitDown?:(seatIdx?:number)=>void; onRebuy:()=>void; onPause:()=>void; isHost?:boolean; showAdmin?:boolean; onAdminAction?:(action:string,name:string,amount?:number,newSeat?:number)=>void;
+function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy, onPause, isHost, onAdminAction }: {
+  table: TableState; onAct:(a:any)=>void; onChat:(t:string)=>void; onLeave:()=>void; onSitDown?:(seatIdx?:number)=>void; onRebuy:()=>void; onPause:()=>void; isHost?:boolean; onAdminAction?:(action:string,name:string,amount?:number,newSeat?:number)=>void;
 }) {
   const [chatText, setChatText] = useState("");
   const [chatOpen, setChatOpen] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
   const [raiseAmt, setRaiseAmt] = useState(0);
   const [timeLeft, setTimeLeft] = useState(20);
   const [autoAction, setAutoAction] = useState<"checkFold"|"callAny"|"check"|null>(null);
@@ -504,7 +505,7 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy, onPause,
   return (
     <div style={{display:"flex",flexDirection:"column",height:"100dvh",background:"#0a0a0f",overflow:"hidden"}}>
       <ActionBtnStyles/>
-      {showAdmin && isHost && onAdminAction && <AdminPanel table={table} onAdminAction={onAdminAction} onClose={()=>{}} />}
+      {adminOpen && isHost && onAdminAction && <AdminPanel table={table} onAdminAction={onAdminAction} onClose={()=>setAdminOpen(false)} />}
 
       {/* TOP BAR */}
       <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"6px 10px",background:"rgba(15,23,42,0.95)",borderBottom:"1px solid rgba(255,255,255,0.06)",flexShrink:0}}>
