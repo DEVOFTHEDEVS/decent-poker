@@ -1141,9 +1141,10 @@ function ShareModal({ roomId, onClose }: { roomId:string; onClose:()=>void }) {
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "wss://decent-poker-production.up.railway.app";
 
 export default function App() {
+  const [isHost, setIsHost] = useState(()=>typeof sessionStorage!=="undefined"&&sessionStorage.getItem("is_host")==="1");
+  const [showAdmin, setShowAdmin] = useState(false);
   const { connected, lobby, table, error, roomId, setRoomId, send, setTable } = useWS(WS_URL, (m) => {
     if (m.type === "room_created") {
-      // Creator is always host
       setIsHost(true);
       if (typeof sessionStorage!=="undefined") sessionStorage.setItem("is_host","1");
     } else if (m.type === "joined" && m.isHost === true) {
@@ -1156,8 +1157,6 @@ export default function App() {
   });
   const [view, setView] = useState<"home"|"table">("home");
   const [showRebuy, setShowRebuy] = useState(false);
-  const [isHost, setIsHost] = useState(()=>typeof sessionStorage!=="undefined"&&sessionStorage.getItem("is_host")==="1");
-  const [showAdmin, setShowAdmin] = useState(false);
   const [rebuyAmt, setRebuyAmt] = useState("1000");
   const [selectedSeat, setSelectedSeat] = useState<number|null>(null);
   const [sitConfirmAmt, setSitConfirmAmt] = useState("1000");
@@ -1257,12 +1256,13 @@ export default function App() {
           }}
           onRebuy={()=>setShowRebuy(true)}
           onPause={()=>{
-            // Use current seat state from the seats array (more reliable than you.sittingOut)
             const mySeat = table.seats?.find((s:any)=>s?.id?.includes(seed.slice(0,8)));
             const isOut = mySeat?.sittingOut || table.you?.sittingOut;
             if(isOut) send({type:"resume",tableId:table.id,playerSeed:seed});
             else send({type:"pause",tableId:table.id,playerSeed:seed});
           }}
+          isHost={isHost}
+          onAdminAction={(action,targetName,amount,newSeat)=>send({type:"admin_action",tableId:table.id,action,targetName,amount,newSeat})}
         />
       ) : (
         <div style={{paddingTop:36}}>
