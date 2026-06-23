@@ -32,16 +32,21 @@ function getPlayerName() { return (typeof sessionStorage!=="undefined" && sessio
 
 // ── Button Styles ────────────────────────────────────────────────────────────
 const ACTION_BTN_CSS = `
-  .btn-call { flex:1; padding:13px 0; background:transparent; border:2px solid #22c55e; border-radius:8px; color:#22c55e; font-weight:800; font-size:14px; cursor:pointer; letter-spacing:0.5px; transition:background 0.1s,box-shadow 0.1s; }
-  .btn-call:hover, .btn-call:active { background:rgba(34,197,94,0.2); box-shadow:0 0 16px rgba(34,197,94,0.5); }
-  .btn-raise { flex:1; padding:13px 0; background:transparent; border:2px solid #f59e0b; border-radius:8px; color:#f59e0b; font-weight:800; font-size:14px; cursor:pointer; letter-spacing:0.5px; transition:background 0.1s,box-shadow 0.1s; }
-  .btn-raise:hover, .btn-raise:active { background:rgba(245,158,11,0.2); box-shadow:0 0 16px rgba(245,158,11,0.5); }
-  .btn-check { flex:1; padding:13px 0; background:transparent; border:2px solid #64748b; border-radius:8px; color:#94a3b8; font-weight:800; font-size:14px; cursor:pointer; letter-spacing:0.5px; transition:background 0.1s,box-shadow 0.1s; }
-  .btn-check:hover, .btn-check:active { background:rgba(100,116,139,0.2); color:#e2e8f0; box-shadow:0 0 16px rgba(100,116,139,0.4); }
-  .btn-allin { flex:1; padding:13px 0; background:transparent; border:2px solid #f97316; border-radius:8px; color:#f97316; font-weight:800; font-size:14px; cursor:pointer; letter-spacing:0.5px; transition:background 0.1s,box-shadow 0.1s; }
-  .btn-allin:hover, .btn-allin:active { background:rgba(249,115,22,0.2); box-shadow:0 0 16px rgba(249,115,22,0.5); }
-  .btn-fold { flex:1; padding:13px 0; background:transparent; border:2px solid #ef4444; border-radius:8px; color:#ef4444; font-weight:800; font-size:14px; cursor:pointer; letter-spacing:0.5px; transition:background 0.1s,box-shadow 0.1s; }
-  .btn-fold:hover, .btn-fold:active { background:rgba(239,68,68,0.2); box-shadow:0 0 16px rgba(239,68,68,0.5); }
+  .btn-call { flex:1; padding:13px 0; background:transparent; border:2px solid #22c55e; border-radius:8px; color:#22c55e; font-weight:800; font-size:14px; cursor:pointer; letter-spacing:0.5px; transition:all 0.12s ease; }
+  .btn-call:hover { background:rgba(34,197,94,0.18); box-shadow:0 0 20px rgba(34,197,94,0.6); transform:translateY(-1px); }
+  .btn-call:active { background:rgba(34,197,94,0.3); box-shadow:0 0 24px rgba(34,197,94,0.8); transform:translateY(0); }
+  .btn-raise { flex:1; padding:13px 0; background:transparent; border:2px solid #f59e0b; border-radius:8px; color:#f59e0b; font-weight:800; font-size:14px; cursor:pointer; letter-spacing:0.5px; transition:all 0.12s ease; }
+  .btn-raise:hover { background:rgba(245,158,11,0.18); box-shadow:0 0 20px rgba(245,158,11,0.6); transform:translateY(-1px); }
+  .btn-raise:active { background:rgba(245,158,11,0.3); box-shadow:0 0 24px rgba(245,158,11,0.8); transform:translateY(0); }
+  .btn-check { flex:1; padding:13px 0; background:transparent; border:2px solid #64748b; border-radius:8px; color:#94a3b8; font-weight:800; font-size:14px; cursor:pointer; letter-spacing:0.5px; transition:all 0.12s ease; }
+  .btn-check:hover { background:rgba(100,116,139,0.18); color:#e2e8f0; box-shadow:0 0 20px rgba(100,116,139,0.5); transform:translateY(-1px); }
+  .btn-check:active { background:rgba(100,116,139,0.3); color:#f1f5f9; box-shadow:0 0 24px rgba(100,116,139,0.7); transform:translateY(0); }
+  .btn-allin { flex:1; padding:13px 0; background:transparent; border:2px solid #f97316; border-radius:8px; color:#f97316; font-weight:800; font-size:14px; cursor:pointer; letter-spacing:0.5px; transition:all 0.12s ease; }
+  .btn-allin:hover { background:rgba(249,115,22,0.18); box-shadow:0 0 20px rgba(249,115,22,0.6); transform:translateY(-1px); }
+  .btn-allin:active { background:rgba(249,115,22,0.3); box-shadow:0 0 24px rgba(249,115,22,0.8); transform:translateY(0); }
+  .btn-fold { flex:1; padding:13px 0; background:transparent; border:2px solid #ef4444; border-radius:8px; color:#ef4444; font-weight:800; font-size:14px; cursor:pointer; letter-spacing:0.5px; transition:all 0.12s ease; }
+  .btn-fold:hover { background:rgba(239,68,68,0.18); box-shadow:0 0 20px rgba(239,68,68,0.6); transform:translateY(-1px); }
+  .btn-fold:active { background:rgba(239,68,68,0.3); box-shadow:0 0 24px rgba(239,68,68,0.8); transform:translateY(0); }
 `;
 
 // ── Sound Engine ──────────────────────────────────────────────────────────────
@@ -524,6 +529,11 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy, onPause,
           {you && (
             <button onClick={()=>onPause()} style={{padding:"4px 8px",background:you.sittingOut?"rgba(34,197,94,0.2)":"rgba(30,41,59,0.6)",border:you.sittingOut?"1px solid #22c55e":"1px solid rgba(255,255,255,0.08)",borderRadius:6,color:you.sittingOut?"#86efac":"#94a3b8",fontSize:10,fontWeight:700,cursor:"pointer"}}>
               {you.sittingOut?"▶ BACK":"⏸ BREAK"}
+            </button>
+          )}
+          {isHost && onAdminAction && (
+            <button onClick={()=>setAdminOpen(v=>!v)} style={{padding:"4px 8px",background:adminOpen?"rgba(245,158,11,0.3)":"rgba(245,158,11,0.15)",border:`1px solid ${adminOpen?"#f59e0b":"rgba(245,158,11,0.3)"}`,borderRadius:6,color:"#f59e0b",fontSize:10,fontWeight:700,cursor:"pointer"}}>
+              ⚙ ADMIN
             </button>
           )}
           <button onClick={onLeave} style={{padding:"4px 10px",background:"rgba(127,29,29,0.5)",border:"1px solid #7f1d1d",borderRadius:6,color:"#fca5a5",fontSize:11,fontWeight:700,cursor:"pointer"}}>LEAVE</button>
@@ -1065,16 +1075,16 @@ const WS_URL = process.env.NEXT_PUBLIC_WS_URL || "wss://decent-poker-production.
 
 export default function App() {
   const { connected, lobby, table, error, roomId, setRoomId, send, setTable } = useWS(WS_URL, (m) => {
-    if (m.isHost === true) {
+    if (m.type === "room_created") {
+      // Creator is always host
       setIsHost(true);
       if (typeof sessionStorage!=="undefined") sessionStorage.setItem("is_host","1");
-    }
-    if (m.type === "room_created" || m.type === "joined" || m.type === "state") {
-      // Reset isHost if server says not host (e.g. after reconnect as non-host)
-      if (m.isHost === false && typeof sessionStorage!=="undefined") {
-        sessionStorage.removeItem("is_host");
-        setIsHost(false);
-      }
+    } else if (m.type === "joined" && m.isHost === true) {
+      setIsHost(true);
+      if (typeof sessionStorage!=="undefined") sessionStorage.setItem("is_host","1");
+    } else if ((m.type === "joined" || m.type === "state") && m.isHost === false) {
+      setIsHost(false);
+      if (typeof sessionStorage!=="undefined") sessionStorage.removeItem("is_host");
     }
   });
   const [view, setView] = useState<"home"|"table">("home");
