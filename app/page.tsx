@@ -14,8 +14,12 @@ const sol = (l: number) => (l / 1e9).toFixed(3);
 // chip mode: values stored as plain numbers (1 chip = 1 lamport)
 // sol mode: values stored as lamports (1 SOL = 1_000_000_000)
 // usd mode: same as chip mode but shows $ prefix
+// Global currency cache - updated whenever we get table state
+let _currentCurrency = typeof sessionStorage !== "undefined" ? sessionStorage.getItem("table_currency") || "chips" : "chips";
+function setCurrencyCache(c: string) { _currentCurrency = c; if(typeof sessionStorage!=="undefined") sessionStorage.setItem("table_currency",c); }
+
 function displayAmount(l: number, mode?: string): string {
-  const m = mode || (typeof sessionStorage !== "undefined" ? sessionStorage.getItem("table_currency") : null) || "chips";
+  const m = mode || _currentCurrency || "chips";
   if (m === "chips") {
     return l >= 1000 ? l.toLocaleString() : l.toString();
   }
@@ -236,14 +240,15 @@ function useWS(url: string, onMessage?: (m: any) => void) {
               sessionStorage.removeItem("join_room_id");
               sessionStorage.removeItem("join_room_name");
             }
-            if (typeof sessionStorage!=="undefined") sessionStorage.setItem("table_currency", m.currency || sessionStorage.getItem("table_currency") || "chips");
+            if (m.currency) setCurrencyCache(m.currency);
+            else if (typeof sessionStorage!=="undefined" && sessionStorage.getItem("table_currency")) setCurrencyCache(sessionStorage.getItem("table_currency")!);
           }
           else if (m.type==="room_created") {
             setRoomId(m.roomId); setTable({...m.table});
             if (typeof sessionStorage!=="undefined") {
               sessionStorage.setItem("current_table_id", m.table.id);
               sessionStorage.setItem("last_room_id", m.roomId);
-              sessionStorage.setItem("table_currency", m.currency || "chips");
+              setCurrencyCache(m.currency || "chips");
             }
           }
           else if (m.type==="cashout") { setTable(null); if (typeof sessionStorage!=="undefined") sessionStorage.removeItem("current_table_id"); }
@@ -269,7 +274,7 @@ function useWS(url: string, onMessage?: (m: any) => void) {
             // Show table as spectator - user will click a seat to join
             setTable({...m.table});
             if (typeof sessionStorage!=="undefined") {
-              if (m.currency) sessionStorage.setItem("table_currency", m.currency);
+              if (m.currency) setCurrencyCache(m.currency);
               // DON'T clear join_room_id yet - needed for when they sit down
             }
           }

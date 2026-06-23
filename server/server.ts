@@ -670,14 +670,22 @@ export class PokerServer {
   private persistRooms(): void {
     try {
       const fs = require('fs');
-      const data = Array.from(this.dynamicRooms.entries()).map(([roomId, room]) => ({
-        roomId,
-        tableId: room.tableId,
-        createdAt: room.createdAt,
-        startingChips: room.startingChips,
-        currency: room.currency,
-        seatMemory: Array.from(room.seatMemory?.entries() || []),
-      }));
+      const data = Array.from(this.dynamicRooms.entries()).map(([roomId, room]) => {
+        const tbl = this.tables.get(room.tableId);
+        return {
+          roomId,
+          tableId: room.tableId,
+          createdAt: room.createdAt,
+          startingChips: room.startingChips,
+          currency: room.currency,
+          hostId: room.hostId || '',
+          seatMemory: Array.from(room.seatMemory?.entries() || []),
+          sb: tbl ? (tbl as any).cfg?.sb : 25,
+          bb: tbl ? (tbl as any).cfg?.bb : 50,
+          maxSeats: tbl ? (tbl as any).cfg?.maxSeats : 6,
+          roomName: tbl ? (tbl as any).cfg?.name : '',
+        };
+      });
       fs.writeFileSync(this.persistPath, JSON.stringify(data));
     } catch(e) { /* ignore */ }
   }
@@ -687,27 +695,42 @@ export class PokerServer {
       const fs = require('fs');
       if (!fs.existsSync(this.persistPath)) return;
       const data = JSON.parse(fs.readFileSync(this.persistPath, 'utf8'));
+      let restored = 0;
       for (const r of data) {
         // Only restore rooms created in last 12 hours
         if (Date.now() - r.createdAt > 12 * 60 * 60 * 1000) continue;
-        // Recreate the table
-        const { roomId, table } = this.createRoom(10_000_000, 20_000_000, 6, 'Restored Room');
-        // The table gets a new ID, update the room record
-        this.dynamicRooms.delete(roomId); // remove the new one
+        // Create table with the SAME tableId so existing links keep working
+        const tableId = `room_${r.roomId}`;
+        const sb = r.sb || 25;
+        const bb = r.bb || 50;
+        const cfg = {
+          id: tableId,
+          name: r.roomName || `Room ${r.roomId.toUpperCase()}`,
+          sb, bb,
+          minBuyIn: bb * 20,
+          maxBuyIn: bb * 200,
+          maxSeats: r.maxSeats || 6,
+          rakePercent: 0,
+        };
+        const { PokerTable } = require('../lib/engine/table');
+        const table = new PokerTable(cfg);
+        table.onStateChange = (t: any) => this.broadcastTableState(t);
+        this.tables.set(tableId, table);
+        (table as any)._currency = r.currency || 'chips';
         const seatMemory = new Map(r.seatMemory || []);
-        this.dynamicRooms.set(r.roomId, { 
-          tableId: table['cfg'].id,
+        this.dynamicRooms.set(r.roomId, {
+          tableId,
           createdAt: r.createdAt,
           startingChips: r.startingChips || 1000,
           currency: r.currency || 'chips',
           seatMemory,
+          hostId: r.hostId || '',
         });
-        // Tag table with currency
-        (table as any)._currency = r.currency || 'chips';
-        console.log(`[RESTORE] Room ${r.roomId} restored`);
+        restored++;
+        console.log(`[RESTORE] Room ${r.roomId} → table ${tableId}`);
       }
-      console.log(`[RESTORE] Loaded ${data.length} rooms from disk`);
-    } catch(e) { console.log('[RESTORE] No saved rooms:', (e as any).message); }
+      console.log(`[RESTORE] ${restored}/${data.length} rooms restored`);
+    } catch(e) { console.log('[RESTORE] Failed:', (e as any).message); }
   }
 
   close(): void {
