@@ -435,7 +435,26 @@ export class PokerServer {
         if (!table) return;
         const { action, targetName, amount, newSeat } = msg as any;
 
-        if (action === "give_chips") {
+        if (action === "pause_game") {
+          table.pauseGame();
+        } else if (action === "resume_game") {
+          table.resumeGame();
+        } else if (action === "set_blinds") {
+          // amount=ante, newSeat encodes sb*100000+bb
+          const encoded = (msg as any).newSeat || 0;
+          const sb = Math.floor(encoded / 100000);
+          const bb = encoded % 100000;
+          const ante = (msg as any).amount || 0;
+          if (sb > 0 && bb > sb) {
+            table.setBlinds(sb, bb);
+            table.setAnte(ante);
+            console.log(`[ADMIN] Blinds set to ${sb}/${bb} ante=${ante}`);
+          }
+        } else if (action === "sit_player") {
+          // Unsit a sitting-out player by name
+          const seat = (table as any).seats?.find((s: any) => s?.name?.toLowerCase() === targetName?.toLowerCase());
+          if (seat) { seat.sittingOut = false; (table as any).emit?.(); }
+        } else if (action === "give_chips") {
           // Give/take chips from a player by name
           const seat = (table as any).seats?.find((s: any) => s?.name?.toLowerCase() === targetName?.toLowerCase());
           if (seat) {

@@ -137,6 +137,8 @@ export interface TableState {
   blindLevel?: number;
   blindSchedule?: {sb: number; bb: number; durationMs: number}[] | null;
   nextBlindTime?: number | null;
+  gamePaused?: boolean;
+  ante?: number;
 }
 
 // ── Client View (player-specific) ────────────────────────────────────────────
@@ -227,4 +229,6 @@ export interface LobbyTable {
   blindLevel?: number;
   blindSchedule?: {sb: number; bb: number; durationMs: number}[] | null;
   nextBlindTime?: number | null;
+  gamePaused?: boolean;
+  ante?: number;
 }

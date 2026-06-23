@@ -49,6 +49,8 @@ export class PokerTable {
   private handId: number; // increments each hand, used to detect stale timers
   private runningOut: boolean; // true while runBoardOut is in progress
   private betweenHands: boolean; // true from endHand until startHand begins
+  public gamePaused: boolean; // host paused the game
+  public ante: number; // ante amount per hand
   private endHandTimer: ReturnType<typeof setTimeout> | null;
   private blindTimer: ReturnType<typeof setTimeout> | null;
   public blindLevel: number; // current level index
@@ -88,6 +90,8 @@ export class PokerTable {
     this.handId = 0;
     this.runningOut = false;
     this.betweenHands = false;
+    this.gamePaused = false;
+    this.ante = 0;
     this.endHandTimer = null;
     this.blindTimer = null;
     this.blindLevel = 0;
@@ -203,6 +207,33 @@ export class PokerTable {
     this.emit();
     if (!this.handActive && !this.handEnding && !this.betweenHands) this.maybeStartHand();
     return true;
+  }
+
+  /** Pause the entire game (host only) */
+  pauseGame(): void {
+    this.gamePaused = true;
+    this.emit();
+    console.log("[GAME] Paused by host");
+  }
+
+  /** Resume the game */
+  resumeGame(): void {
+    this.gamePaused = false;
+    this.emit();
+    if (!this.handActive) this.maybeStartHand();
+    console.log("[GAME] Resumed by host");
+  }
+
+  /** Set ante amount */
+  setAnte(amount: number): void {
+    this.ante = Math.max(0, amount);
+    this.emit();
+  }
+
+  /** Update blinds live */
+  setBlinds(sb: number, bb: number): void {
+    this.cfg = { ...this.cfg, sb, bb };
+    this.emit();
   }
 
   /** Start a blind schedule - chips tournament mode */
@@ -391,6 +422,8 @@ export class PokerTable {
       blindLevel: this.blindLevel,
       blindSchedule: this.blindSchedule,
       nextBlindTime: this.nextBlindTime,
+      gamePaused: this.gamePaused,
+      ante: this.ante,
       minSol: this.cfg.minBuyIn / LAMPORTS,
       you,
       currentSeedHash: this.serverSeedHash,
@@ -411,6 +444,8 @@ export class PokerTable {
       blindLevel: this.blindLevel,
       blindSchedule: this.blindSchedule,
       nextBlindTime: this.nextBlindTime,
+      gamePaused: this.gamePaused,
+      ante: this.ante,
       minSol: this.cfg.minBuyIn / LAMPORTS,
       maxSol: this.cfg.maxBuyIn / LAMPORTS,
     };
@@ -480,7 +515,7 @@ export class PokerTable {
 
   private maybeStartHand(): void {
     const active = this.activePlayers();
-    if (active.length < 2 || this.handActive || this.handEnding || this.betweenHands) return;
+    if (active.length < 2 || this.handActive || this.handEnding || this.betweenHands || this.gamePaused) return;
     // Cancel any existing timer to prevent double-scheduling
     if (this.handTimer) { clearTimeout(this.handTimer); this.handTimer = null; }
     this.handTimer = setTimeout(() => this.startHand(), BETWEEN_HAND_DELAY_MS);
@@ -556,6 +591,16 @@ export class PokerTable {
     const sbSeat = this.nextActiveSeat(this.buttonSeat);
     const bbSeat = this.nextActiveSeat(sbSeat);
 
+    // Post antes if set
+    if (this.ante > 0) {
+      for (let i = 0; i < this.seats.length; i++) {
+        const s = this.seats[i];
+        if (s && s.inHand) {
+          const anteAmt = Math.min(this.ante, s.chips);
+          this.postBlind(i, anteAmt, "ANTE");
+        }
+      }
+    }
     this.postBlind(sbSeat, this.cfg.sb, "SB");
     this.postBlind(bbSeat, this.cfg.bb, "BB");
     this.currentBet = this.cfg.bb;

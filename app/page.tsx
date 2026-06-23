@@ -319,68 +319,130 @@ function AdminPanel({ table, onAdminAction, onClose }: {
   onAdminAction: (action: string, targetName: string, amount?: number, newSeat?: number) => void;
   onClose: () => void;
 }) {
-  const [chipAmt, setChipAmt] = useState<Record<string, string>>({});
-  const cur = typeof sessionStorage !== "undefined" ? sessionStorage.getItem("table_currency") || "chips" : "chips";
-  const isUSD = cur === "usd";
+  const [chipAmt, setChipAmt] = useState<Record<string,string>>({});
+  const [tab, setTab] = useState<"players"|"game">("players");
+  const [newSb, setNewSb] = useState(String((table.sb||25)));
+  const [newBb, setNewBb] = useState(String((table.bb||50)));
+  const [newAnte, setNewAnte] = useState(String((table as any).ante||0));
+  const cur = typeof sessionStorage!=="undefined" ? sessionStorage.getItem("table_currency")||"chips" : "chips";
+  const isUSD = cur==="usd";
+  const isPaused = (table as any).gamePaused;
+  const seated = table.seats.filter((s): s is Seat => s!==null);
 
-  const seated = table.seats.filter((s): s is Seat => s !== null);
-
-  function applyChips(name: string) {
-    const raw = parseFloat(chipAmt[name] || "0");
-    if (!raw) return;
-    let lamports = isUSD ? Math.round(raw * 100) : Math.round(raw);
-    onAdminAction("set_chips", name, lamports);
-    setChipAmt(prev => ({ ...prev, [name]: "" }));
-  }
-
-  function addChips(name: string, amount: number) {
-    let lamports = isUSD ? Math.round(amount * 100) : Math.round(amount);
-    onAdminAction("give_chips", name, lamports);
-  }
+  function toL(v: number) { return isUSD ? Math.round(v*100) : Math.round(v); }
 
   return (
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.7)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={onClose}>
-      <div style={{background:"#0f172a",border:"1px solid rgba(245,158,11,0.3)",borderRadius:16,padding:20,width:"100%",maxWidth:420,maxHeight:"80vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-          <h3 style={{margin:0,color:"#f59e0b",fontWeight:800,fontSize:16}}>⚙ Host Controls</h3>
-          <button onClick={onClose} style={{background:"none",border:"none",color:"#64748b",fontSize:18,cursor:"pointer"}}>✕</button>
+    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",zIndex:200,display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={onClose}>
+      <div style={{background:"#0f172a",border:"1px solid rgba(245,158,11,0.35)",borderRadius:16,padding:20,width:"100%",maxWidth:440,maxHeight:"85vh",overflowY:"auto"}} onClick={e=>e.stopPropagation()}>
+
+        {/* Header */}
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+          <span style={{color:"#f59e0b",fontWeight:800,fontSize:16}}>⚙ Host Controls</span>
+          <button onClick={onClose} style={{background:"none",border:"none",color:"#64748b",fontSize:20,cursor:"pointer",lineHeight:1}}>✕</button>
         </div>
 
-        {seated.length === 0 ? (
-          <p style={{color:"#64748b",textAlign:"center"}}>No players seated</p>
-        ) : seated.map(seat => (
-          <div key={seat.id} style={{background:"rgba(30,41,59,0.6)",borderRadius:10,padding:12,marginBottom:8}}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-              <span style={{color:"#f1f5f9",fontWeight:700,fontSize:14}}>{seat.name}</span>
-              <div style={{display:"flex",alignItems:"center",gap:6}}>
-                <span style={{color:"#22c55e",fontWeight:600,fontSize:13}}>{displayAmount(seat.chips)}</span>
-                {seat.sittingOut && <span style={{color:"#64748b",fontSize:10}}>BREAK</span>}
+        {/* Tabs */}
+        <div style={{display:"flex",gap:4,marginBottom:14}}>
+          {(["players","game"] as const).map(t=>(
+            <button key={t} onClick={()=>setTab(t)} style={{flex:1,padding:"7px 0",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",
+              background:tab===t?"rgba(245,158,11,0.2)":"rgba(30,41,59,0.5)",
+              border:tab===t?"1px solid #f59e0b":"1px solid rgba(255,255,255,0.06)",
+              color:tab===t?"#f59e0b":"#64748b"}}>
+              {t==="players"?"👥 Players":"🎮 Game Settings"}
+            </button>
+          ))}
+        </div>
+
+        {tab==="players" && (
+          <div>
+            {seated.length===0 ? <p style={{color:"#64748b",textAlign:"center",fontSize:13}}>No players seated yet</p> :
+            seated.map(seat=>(
+              <div key={seat.id} style={{background:"rgba(30,41,59,0.6)",borderRadius:10,padding:12,marginBottom:8,border:"1px solid rgba(255,255,255,0.05)"}}>
+                <div style={{display:"flex",justifyContent:"space-between",marginBottom:8}}>
+                  <span style={{color:"#f1f5f9",fontWeight:700}}>{seat.name}</span>
+                  <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                    <span style={{color:"#22c55e",fontWeight:600,fontSize:13}}>{displayAmount(seat.chips)}</span>
+                    {seat.sittingOut && <button onClick={()=>onAdminAction("sit_player",seat.name)} style={{padding:"2px 7px",background:"rgba(34,197,94,0.15)",border:"1px solid #22c55e",borderRadius:4,color:"#86efac",fontSize:10,cursor:"pointer"}}>SIT IN</button>}
+                  </div>
+                </div>
+                <div style={{display:"flex",gap:3,marginBottom:6,flexWrap:"wrap"}}>
+                  {(isUSD?[10,25,50,100]:[500,1000,2000,5000]).map(v=>(
+                    <button key={v} onClick={()=>onAdminAction("give_chips",seat.name,toL(v))}
+                      style={{padding:"3px 8px",background:"rgba(34,197,94,0.12)",border:"1px solid rgba(34,197,94,0.25)",borderRadius:5,color:"#86efac",fontSize:11,fontWeight:600,cursor:"pointer"}}>
+                      +{isUSD?"$":""}{v}
+                    </button>
+                  ))}
+                  {(isUSD?[10,25]:[500,1000]).map(v=>(
+                    <button key={-v} onClick={()=>onAdminAction("give_chips",seat.name,-toL(v))}
+                      style={{padding:"3px 8px",background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.2)",borderRadius:5,color:"#fca5a5",fontSize:11,fontWeight:600,cursor:"pointer"}}>
+                      -{isUSD?"$":""}{v}
+                    </button>
+                  ))}
+                </div>
+                <div style={{display:"flex",gap:5}}>
+                  <input type="number" placeholder={isUSD?"Set $…":"Set chips…"} value={chipAmt[seat.name]||""} onChange={e=>setChipAmt(p=>({...p,[seat.name]:e.target.value}))}
+                    style={{flex:1,background:"rgba(15,23,42,0.8)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:6,padding:"6px 9px",fontSize:12,color:"#f1f5f9",outline:"none"}}/>
+                  <button onClick={()=>{const r=parseFloat(chipAmt[seat.name]||"0");if(r)onAdminAction("set_chips",seat.name,toL(r));setChipAmt(p=>({...p,[seat.name]:""}));}}
+                    style={{padding:"6px 10px",background:"rgba(99,102,241,0.25)",border:"1px solid rgba(99,102,241,0.35)",borderRadius:6,color:"#a5b4fc",fontWeight:700,fontSize:11,cursor:"pointer"}}>SET</button>
+                  <button onClick={()=>onAdminAction("remove_player",seat.name)}
+                    style={{padding:"6px 10px",background:"rgba(127,29,29,0.3)",border:"1px solid rgba(127,29,29,0.4)",borderRadius:6,color:"#fca5a5",fontWeight:700,fontSize:11,cursor:"pointer"}}>KICK</button>
+                </div>
               </div>
+            ))}
+          </div>
+        )}
+
+        {tab==="game" && (
+          <div style={{display:"flex",flexDirection:"column",gap:12}}>
+            {/* Pause/Resume */}
+            <div style={{background:"rgba(30,41,59,0.6)",borderRadius:10,padding:12}}>
+              <div style={{fontSize:11,color:"#64748b",fontWeight:600,marginBottom:8,letterSpacing:1}}>GAME STATUS</div>
+              <button onClick={()=>onAdminAction(isPaused?"resume_game":"pause_game","")}
+                style={{width:"100%",padding:"11px 0",background:isPaused?"rgba(34,197,94,0.15)":"rgba(239,68,68,0.12)",border:`1px solid ${isPaused?"#22c55e":"#ef4444"}`,borderRadius:9,color:isPaused?"#86efac":"#fca5a5",fontWeight:800,fontSize:14,cursor:"pointer"}}>
+                {isPaused?"▶ RESUME GAME":"⏸ PAUSE GAME"}
+              </button>
+              {isPaused && <div style={{textAlign:"center",color:"#64748b",fontSize:11,marginTop:6}}>Game is paused — no new hands will start</div>}
             </div>
-            <div style={{display:"flex",gap:4,marginBottom:6}}>
-              {(isUSD?[10,20,50,100]:[500,1000,2000,5000]).map(v=>(
-                <button key={v} onClick={()=>addChips(seat.name, v)}
-                  style={{flex:1,padding:"4px 0",background:"rgba(34,197,94,0.15)",border:"1px solid rgba(34,197,94,0.3)",borderRadius:6,color:"#86efac",fontSize:11,fontWeight:600,cursor:"pointer"}}>
-                  +{isUSD?"$":""}{v}
-                </button>
-              ))}
-              {(isUSD?[10,20,50]:[500,1000,2000]).map(v=>(
-                <button key={-v} onClick={()=>addChips(seat.name, -v)}
-                  style={{flex:1,padding:"4px 0",background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.2)",borderRadius:6,color:"#fca5a5",fontSize:11,fontWeight:600,cursor:"pointer"}}>
-                  -{isUSD?"$":""}{v}
-                </button>
-              ))}
-            </div>
-            <div style={{display:"flex",gap:6}}>
-              <input type="number" placeholder={isUSD?"Set $ amount…":"Set chip amount…"} value={chipAmt[seat.name]||""} onChange={e=>setChipAmt(p=>({...p,[seat.name]:e.target.value}))}
-                style={{flex:1,background:"rgba(15,23,42,0.8)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:7,padding:"6px 10px",fontSize:13,color:"#f1f5f9",outline:"none"}}/>
-              <button onClick={()=>applyChips(seat.name)}
-                style={{padding:"6px 12px",background:"rgba(99,102,241,0.3)",border:"1px solid rgba(99,102,241,0.4)",borderRadius:7,color:"#a5b4fc",fontWeight:700,fontSize:12,cursor:"pointer"}}>SET</button>
-              <button onClick={()=>onAdminAction("remove_player", seat.name)}
-                style={{padding:"6px 10px",background:"rgba(127,29,29,0.3)",border:"1px solid rgba(127,29,29,0.4)",borderRadius:7,color:"#fca5a5",fontWeight:700,fontSize:12,cursor:"pointer"}}>KICK</button>
+
+            {/* Blinds */}
+            <div style={{background:"rgba(30,41,59,0.6)",borderRadius:10,padding:12}}>
+              <div style={{fontSize:11,color:"#64748b",fontWeight:600,marginBottom:8,letterSpacing:1}}>BLINDS {isUSD?"(USD)":"(CHIPS)"}</div>
+              <div style={{display:"flex",gap:8,marginBottom:8}}>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:10,color:"#475569",marginBottom:3}}>SMALL BLIND</div>
+                  <input type="number" value={newSb} onChange={e=>setNewSb(e.target.value)} step={isUSD?"0.05":"1"}
+                    style={{width:"100%",background:"rgba(15,23,42,0.8)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:7,padding:"8px 10px",fontSize:14,color:"#f1f5f9",outline:"none",boxSizing:"border-box",fontFamily:"monospace"}}/>
+                </div>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:10,color:"#475569",marginBottom:3}}>BIG BLIND</div>
+                  <input type="number" value={newBb} onChange={e=>setNewBb(e.target.value)} step={isUSD?"0.05":"1"}
+                    style={{width:"100%",background:"rgba(15,23,42,0.8)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:7,padding:"8px 10px",fontSize:14,color:"#f1f5f9",outline:"none",boxSizing:"border-box",fontFamily:"monospace"}}/>
+                </div>
+              </div>
+              <div style={{marginBottom:8}}>
+                <div style={{fontSize:10,color:"#475569",marginBottom:3}}>ANTE (0 = no ante)</div>
+                <input type="number" value={newAnte} onChange={e=>setNewAnte(e.target.value)} step={isUSD?"0.05":"1"} min="0"
+                  style={{width:"100%",background:"rgba(15,23,42,0.8)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:7,padding:"8px 10px",fontSize:14,color:"#f1f5f9",outline:"none",boxSizing:"border-box",fontFamily:"monospace"}}/>
+              </div>
+              <button onClick={()=>{
+                const sb=isUSD?Math.round(parseFloat(newSb)*100):Math.round(parseFloat(newSb));
+                const bb=isUSD?Math.round(parseFloat(newBb)*100):Math.round(parseFloat(newBb));
+                const ante=isUSD?Math.round(parseFloat(newAnte||"0")*100):Math.round(parseFloat(newAnte||"0"));
+                if(sb>0&&bb>0) onAdminAction("set_blinds","",sb,ante);
+                // Send bb separately via a hack - pass in amount field for bb
+                // Actually let's use a different approach
+              }} style={{display:"none"}}/>
+              <button onClick={()=>{
+                const sb=isUSD?Math.round(parseFloat(newSb)*100):parseInt(newSb)||25;
+                const bb=isUSD?Math.round(parseFloat(newBb)*100):parseInt(newBb)||50;
+                const ante=isUSD?Math.round(parseFloat(newAnte||"0")*100):parseInt(newAnte||"0");
+                onAdminAction("set_blinds","",ante,sb*100000+bb); // encode sb/bb in newSeat
+              }} style={{width:"100%",padding:"9px 0",background:"rgba(99,102,241,0.25)",border:"1px solid rgba(99,102,241,0.4)",borderRadius:8,color:"#a5b4fc",fontWeight:700,fontSize:13,cursor:"pointer"}}>
+                APPLY BLINDS
+              </button>
             </div>
           </div>
-        ))}
+        )}
       </div>
     </div>
   );
@@ -594,6 +656,11 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy, onPause,
 
       {/* ACTION PANEL */}
       <div style={{padding:"8px 10px",background:"rgba(15,23,42,0.98)",borderTop:"1px solid rgba(255,255,255,0.07)",flexShrink:0}}>
+        {(table as any).gamePaused && (
+          <div style={{textAlign:"center",padding:"10px",background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.3)",borderRadius:8,color:"#fca5a5",fontWeight:700,fontSize:13,marginBottom:4}}>
+            ⏸ Game paused by host
+          </div>
+        )}
         {you?.myTurn && !you.allIn ? (
           <div style={{display:"flex",flexDirection:"column",gap:5}}>
             {/* Timer bar */}
