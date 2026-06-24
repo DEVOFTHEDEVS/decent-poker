@@ -44,6 +44,9 @@ export class PokerTable {
   private botPersonalities: Map<string, BotPersonality>; // playerId → personality
   private botTimer: ReturnType<typeof setTimeout> | null;
   private dealtCount: number; // number of players dealt hole cards this hand
+  private handEnding: boolean; // true during result display, prevents double endHand
+  private resultTimer: ReturnType<typeof setTimeout> | null; // tracks the resetHand timer
+  private handId: number; // increments each hand, used to detect stale timers
   private endHandTimer: ReturnType<typeof setTimeout> | null;
   private turnTimer: ReturnType<typeof setTimeout> | null;
   private handTimer: ReturnType<typeof setTimeout> | null;
@@ -51,6 +54,7 @@ export class PokerTable {
 
   // Callbacks
   onStateChange?: (table: PokerTable) => void;
+  onKick?: (playerId: string, reason: string) => void;
   onHandComplete?: (result: HandResult, tableId: string) => void;
 
   constructor(cfg: TableConfig) {
@@ -73,6 +77,9 @@ export class PokerTable {
     this.botPersonalities = new Map();
     this.botTimer = null;
     this.dealtCount = 0;
+    this.handEnding = false;
+    this.resultTimer = null;
+    this.handId = 0;
     this.endHandTimer = null;
     this.turnTimer = null;
     this.handTimer = null;
@@ -91,17 +98,23 @@ export class PokerTable {
     if (emptySeat === -1) return false; // full
 
     this.playerSeeds.set(playerId, playerSeed);
-    this.seats[emptySeat] = this.makeSeat(playerId, name, chips, avatarUrl);
+    const seat = this.makeSeat(playerId, name, chips, avatarUrl);
+    // If a hand is in progress, sit them out until next hand
+    if (this.handActive || this.handEnding) {
+      seat.sittingOut = true;
+      seat.inHand = false;
+    }
+    this.seats[emptySeat] = seat;
     this.emit();
 
     // Try to start a hand if we have enough players
-    if (!this.handActive) this.maybeStartHand();
+    if (!this.handActive && !this.handEnding) this.maybeStartHand();
     return true;
   }
 
   /** Process a player action (fold/check/call/bet/raise/allin) */
   act(playerId: string, action: Action): { ok: boolean; error?: string } {
-    if (!this.handActive) return { ok: false, error: "No hand in progress" };
+    if (!this.handActive || this.handEnding) return { ok: false, error: "No hand in progress" };
 
     const seat = this.seats.findIndex(s => s?.id === playerId);
     if (seat === -1) return { ok: false, error: "Not at table" };
@@ -153,6 +166,17 @@ export class PokerTable {
 
     if (!this.handActive) this.maybeStartHand();
     return chips;
+  }
+
+  /** Add chips to a player's stack (rebuy) */
+  rebuy(playerId: string, chips: number): boolean {
+    const seat = this.seats.find(s => s?.id === playerId);
+    if (!seat) return false;
+    seat.chips += chips;
+    seat.sittingOut = false; // unsit them so they get dealt in
+    this.emit();
+    if (!this.handActive) this.maybeStartHand();
+    return true;
   }
 
   /** Add chat message */
@@ -298,7 +322,7 @@ export class PokerTable {
 
   /** Schedule a bot action with a human-like delay */
   private scheduleBotAction(seatIdx: number): void {
-    if (this.botTimer) clearTimeout(this.botTimer);
+    if (this.botTimer) { clearTimeout(this.botTimer); this.botTimer = null; }
     const seat = this.seats[seatIdx];
     if (!seat || !seat.isBot) return;
 
@@ -345,8 +369,9 @@ export class PokerTable {
 
   private maybeStartHand(): void {
     const active = this.activePlayers();
-    if (active.length < 2 || this.handActive) return;
-
+    if (active.length < 2 || this.handActive || this.handEnding) return;
+    // Cancel any existing timer to prevent double-scheduling
+    if (this.handTimer) { clearTimeout(this.handTimer); this.handTimer = null; }
     this.handTimer = setTimeout(() => this.startHand(), BETWEEN_HAND_DELAY_MS);
   }
 
@@ -355,10 +380,19 @@ export class PokerTable {
     const active = this.activePlayers();
     if (active.length < 2) return;
 
-    // Cancel any pending bot timers from previous hand
+    // Cancel any pending timers from previous hand
     if (this.botTimer) { clearTimeout(this.botTimer); this.botTimer = null; }
     if (this.endHandTimer) { clearTimeout(this.endHandTimer); this.endHandTimer = null; }
+    if (this.resultTimer) { clearTimeout(this.resultTimer); this.resultTimer = null; }
 
+    this.lastResult = null; // clear previous result
+    this.handId++; // new hand ID so stale resultTimer can detect it
+    // Unsit anyone who was waiting for next hand
+    for (const seat of this.seats) {
+      if (seat && seat.sittingOut && seat.chips > 0) {
+        seat.sittingOut = false;
+      }
+    }
     this.handActive = true;
     this.handNonce++;
     this.board = [];
@@ -516,7 +550,7 @@ export class PokerTable {
   // ── Advance Action ──────────────────────────────────────────────────────────
 
   private advance(): void {
-    if (!this.handActive) return; // Guard against stale callbacks
+    if (!this.handActive || this.handEnding) return; // Guard against stale callbacks
     // Count players still in hand (not folded, not all-in)
     const activePlayers = this.seats.filter(s => s?.inHand && !s.folded && !s.allIn);
     const inHandPlayers = this.seats.filter(s => s?.inHand && !s.folded);
@@ -685,6 +719,8 @@ export class PokerTable {
   }
 
   private endHand(showdown: boolean): void {
+    if (this.handEnding) return; // prevent double-call
+    this.handEnding = true;
     this.clearTurnTimer();
     if (this.botTimer) { clearTimeout(this.botTimer); this.botTimer = null; }
     if (this.endHandTimer) { clearTimeout(this.endHandTimer); this.endHandTimer = null; }
@@ -816,11 +852,19 @@ export class PokerTable {
 
     this.emit();
 
-    // Remove busted players
-    setTimeout(() => {
+    // Handle busted players (tracked timer so it can be cancelled)
+    if (this.resultTimer) clearTimeout(this.resultTimer);
+    const capturedHandId = this.handId;
+    this.resultTimer = setTimeout(() => {
+      this.resultTimer = null;
+      // Only reset if this is still the same hand (no new hand started)
+      if (this.handId !== capturedHandId) return;
       for (const seat of this.seats) {
-        if (seat && seat.chips === 0) {
-          this.leave(seat.id);
+        if (!seat) continue;
+        if (seat.chips <= 0) {
+          if (seat.isBot) {
+            seat.chips = this.cfg.minBuyIn * 3;
+          }
         }
       }
       this.resetHand();
@@ -828,6 +872,8 @@ export class PokerTable {
   }
 
   private resetHand(): void {
+    this.handEnding = false;
+    this.resultTimer = null;
     this.clearTurnTimer();
     if (this.botTimer) { clearTimeout(this.botTimer); this.botTimer = null; }
     for (const seat of this.seats) {
@@ -949,7 +995,7 @@ export class PokerTable {
   destroy(): void {
     this.clearTurnTimer();
     if (this.handTimer) clearTimeout(this.handTimer);
-    if (this.botTimer) clearTimeout(this.botTimer);
+    if (this.botTimer) { clearTimeout(this.botTimer); this.botTimer = null; }
     if (this.endHandTimer) clearTimeout(this.endHandTimer);
   }
 }

@@ -218,7 +218,8 @@ function useWS(url: string, onMessage?: (m: any) => void) {
         }
         // Restore pending room join from localStorage
         if (typeof sessionStorage!=="undefined" && typeof localStorage!=="undefined") {
-          if (!sessionStorage.getItem("pending_join_room") && localStorage.getItem("pending_join_room")) {
+          // Only restore pending join if we don't already have a current table session
+          if (!sessionStorage.getItem("pending_join_room") && !sessionStorage.getItem("current_table_id") && localStorage.getItem("pending_join_room")) {
             sessionStorage.setItem("pending_join_room", localStorage.getItem("pending_join_room")!);
             sessionStorage.setItem("pending_join_name", localStorage.getItem("pending_join_name") || "");
           }
@@ -242,6 +243,13 @@ function useWS(url: string, onMessage?: (m: any) => void) {
               localStorage.setItem("my_seat_index", String(m.table.you.seat));
               sessionStorage.removeItem("join_room_id");
               sessionStorage.removeItem("join_room_name");
+              // Clear any pending join once we're seated
+              sessionStorage.removeItem("pending_join_room");
+              sessionStorage.removeItem("pending_join_name");
+              if (typeof localStorage!=="undefined") {
+                localStorage.removeItem("pending_join_room");
+                localStorage.removeItem("pending_join_name");
+              }
             }
             if (m.currency) setCurrencyCache(m.currency);
             else if (typeof sessionStorage!=="undefined" && sessionStorage.getItem("table_currency")) setCurrencyCache(sessionStorage.getItem("table_currency")!);
