@@ -272,11 +272,6 @@ function useWS(url: string, onMessage?: (m: any) => void) {
             }
             s.send(JSON.stringify({type:"lobby"}));
           }
-          else if (m.type==="admin_granted") {
-            setIsHost(true);
-            if (typeof sessionStorage!=="undefined") sessionStorage.setItem("is_host","1");
-            if (typeof localStorage!=="undefined") localStorage.setItem("is_host","1");
-          }
           else if (m.type==="kicked") {
             // Save currency before clearing table state
             if (m.currency) setCurrencyCache(m.currency);
@@ -1250,6 +1245,10 @@ export default function App() {
       setIsHost(false);
       if (typeof sessionStorage!=="undefined") sessionStorage.removeItem("is_host");
       if (typeof localStorage!=="undefined") localStorage.removeItem("is_host");
+    } else if (m.type === "admin_granted") {
+      setIsHost(true);
+      if (typeof sessionStorage!=="undefined") sessionStorage.setItem("is_host","1");
+      if (typeof localStorage!=="undefined") localStorage.setItem("is_host","1");
     }
   });
   const [view, setView] = useState<"home"|"table">("home");
