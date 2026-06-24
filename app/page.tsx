@@ -1061,7 +1061,7 @@ function RoomSettings({ onConfirm, onCancel, playerName }: { onConfirm:(s:any)=>
 
       <div style={{display:"flex",gap:8,marginTop:4}}>
         <button onClick={onCancel} style={{flex:1,padding:"9px 0",borderRadius:9,background:"transparent",border:"1px solid rgba(255,255,255,0.07)",color:"#64748b",fontWeight:700,fontSize:13,cursor:"pointer"}}>BACK</button>
-        <button onClick={()=>onConfirm({sb:toInternal(sbN),bb:toInternal(bbN),chips:toInternal(parseFloat(String(chipsN))||1000),currency,name:roomName,maxPlayers})}
+        <button onClick={()=>onConfirm({sb:toInternal(sbN),bb:toInternal(bbN),chips:parseFloat(String(chipsN))||1000,currency,name:roomName,maxPlayers})}
           style={{flex:2,padding:"9px 0",borderRadius:9,background:"#166534",border:"none",color:"#fff",fontWeight:700,fontSize:13,cursor:"pointer"}}>CREATE ROOM →</button>
       </div>
     </div>
@@ -1262,6 +1262,8 @@ export default function App() {
       if (typeof localStorage!=="undefined") localStorage.setItem("is_host","1");
     } else if (m.type === "spectating") {
       setView("table");
+    } else if (m.type === "room_created") {
+      if (m.currency) setCurrencyCache(m.currency);
     }
   });
   const [view, setView] = useState<"home"|"table">("home");
@@ -1305,6 +1307,7 @@ export default function App() {
     sessionStorage.setItem("table_currency", settings.currency);
     sessionStorage.setItem("room_chips_start", settings.chips.toString());
     sessionStorage.setItem("last_room_settings", JSON.stringify(settings));
+    setCurrencyCache(settings.currency); // set immediately before WS response
     send({ type:"create_room", name:getPlayerName(), playerSeed:seed, sb:settings.sb, bb:settings.bb, maxPlayers:settings.maxPlayers, roomName:settings.name || `${getPlayerName()}'s Table`, chips:settings.chips, currency:settings.currency });
   }
 
