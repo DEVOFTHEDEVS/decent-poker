@@ -693,8 +693,8 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy, onPause,
 
 
 
-      {/* ACTION PANEL */}
-      <div className="action-panel">
+      {/* ACTION PANEL - only show when seated */}
+      {(you || (table as any).gamePaused) && <div className="action-panel">
         {(table as any).gamePaused && (
           <div style={{textAlign:"center",padding:"10px",background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.3)",borderRadius:8,color:"#fca5a5",fontWeight:700,fontSize:13,marginBottom:4}}>
             ⏸ Game paused by host
@@ -811,10 +811,8 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy, onPause,
               ⏸ BREAK
             </button>
           </div>
-        ) : (
-          <div style={{textAlign:"center"}}>{onSitDown&&<button onClick={()=>onSitDown?.()} style={{padding:"10px 24px",background:"#4338ca",color:"#fff",border:"none",borderRadius:9,fontSize:14,fontWeight:700,cursor:"pointer"}}>SIT DOWN</button>}</div>
-        )}
-      </div>
+        ) : null}
+      </div>}
 
       {/* CHAT + LEDGER — fixed bottom-left corner */}
       <div className="chat-panel-container">
