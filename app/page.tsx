@@ -92,7 +92,7 @@ const Sounds = {
 // ── Card ──────────────────────────────────────────────────────────────────────
 function PlayingCard({ card, small, highlight }: { card: Card|"back"|null; small?: boolean; highlight?: boolean }) {
   if (!card) return null;
-  const w=small?30:68; const h=small?42:95; const fs=small?8:14;
+  const w=small?41:92; const h=small?57:128; const fs=small?11:19;
   if (card==="back") return (
     <div style={{width:w,height:h,borderRadius:5,background:"linear-gradient(135deg,#1e1b4b,#312e81)",border:"1px solid #4338ca",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
       <div style={{width:"78%",height:"78%",borderRadius:3,border:"1px solid rgba(99,102,241,0.3)",background:"repeating-linear-gradient(45deg,transparent,transparent 3px,rgba(99,102,241,0.08) 3px,rgba(99,102,241,0.08) 6px)"}}/>
@@ -102,7 +102,7 @@ function PlayingCard({ card, small, highlight }: { card: Card|"back"|null; small
   return (
     <div style={{width:w,height:h,borderRadius:5,background:"#f8fafc",border:highlight?"2px solid #facc15":"1px solid #e2e8f0",flexShrink:0,padding:2,display:"flex",flexDirection:"column",justifyContent:"space-between",boxShadow:highlight?"0 0 10px rgba(250,204,21,0.5)":"0 2px 6px rgba(0,0,0,0.5)"}}>
       <div style={{color,fontSize:card.r==="T"?fs-1:fs,fontWeight:800,lineHeight:1.1}}>{card.r==="T"?"10":card.r}<br/><span style={{fontSize:fs-1}}>{card.s}</span></div>
-      <div style={{color,fontSize:small?14:24,textAlign:"center",lineHeight:1}}>{card.s}</div>
+      <div style={{color,fontSize:small?18:32,textAlign:"center",lineHeight:1}}>{card.s}</div>
       <div style={{color,fontSize:card.r==="T"?fs-1:fs,fontWeight:800,lineHeight:1.1,transform:"rotate(180deg)"}}>{card.r==="T"?"10":card.r}<br/><span style={{fontSize:fs-1}}>{card.s}</span></div>
     </div>
   );
@@ -629,7 +629,7 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy, onPause,
             {/* Community cards */}
             <div style={{display:"flex",gap:4}}>
               {(table.board||[]).map((c,i)=><PlayingCard key={i} card={c} highlight={winCards?.has(c.r+c.s)}/>)}
-              {Array.from({length:5-(table.board?.length||0)}).map((_,i)=><div key={i} style={{width:68,height:95,borderRadius:5,border:"1px solid rgba(255,255,255,0.07)",background:"rgba(0,0,0,0.15)"}}/>)}
+              {Array.from({length:5-(table.board?.length||0)}).map((_,i)=><div key={i} style={{width:92,height:128,borderRadius:5,border:"1px solid rgba(255,255,255,0.07)",background:"rgba(0,0,0,0.15)"}}/>)}
             </div>
             {/* Pot */}
             {pot>0&&(
