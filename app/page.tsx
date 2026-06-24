@@ -687,12 +687,12 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy, onPause,
             <div style={{display:"flex",gap:6}}>
               {!you.canCheck && (
                 <button className="btn-call" onClick={()=>onAct({type:"call"})}>
-                  CALL<br/><span style={{fontSize:11,fontWeight:600,opacity:0.8}}>{displayAmount(you.toCall)}</span>
+                  CALL<br/><span style={{fontSize:13,fontWeight:700}}>{displayAmount(you.toCall)}</span>
                 </button>
               )}
               {canRaise && (
                 <button className="btn-raise" onClick={()=>onAct({type:raiseAmt>=rMax?"allin":"raise",amount:raiseAmt})}>
-                  RAISE<br/><span style={{fontSize:11,fontWeight:600,opacity:0.8}}>{displayAmount(raiseAmt)}</span>
+                  RAISE<br/><span style={{fontSize:13,fontWeight:700}}>{displayAmount(raiseAmt)}</span>
                 </button>
               )}
               {you.canCheck && (
@@ -702,7 +702,7 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy, onPause,
               )}
               {you && !you.allIn && you.chips > 0 && you.toCall >= you.chips && (
                 <button className="btn-allin" onClick={()=>onAct({type:"allin"})}>
-                  ALL-IN<br/><span style={{fontSize:11,fontWeight:600,opacity:0.8}}>{displayAmount(you.chips)}</span>
+                  ALL-IN<br/><span style={{fontSize:13,fontWeight:700}}>{displayAmount(you.chips)}</span>
                 </button>
               )}
               <button className="btn-fold" onClick={()=>{
@@ -725,7 +725,7 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy, onPause,
                   <input type="range" min={rMin} max={rMax} step={Math.max(1,Math.floor(bb/2))} value={raiseAmt} onChange={e=>setRaiseAmt(+e.target.value)} style={{flex:1,accentColor:"#f59e0b"}}/>
                   <button onClick={()=>onAct({type:raiseAmt>=rMax?"allin":"raise",amount:raiseAmt})}
                     style={{padding:"8px 12px",background:"transparent",border:`2px solid ${raiseAmt>=rMax?"#f97316":"#f59e0b"}`,borderRadius:7,color:raiseAmt>=rMax?"#f97316":"#f59e0b",fontWeight:800,fontSize:12,cursor:"pointer",whiteSpace:"nowrap",minWidth:90}}>
-                    {raiseAmt>=rMax?"ALL-IN":"RAISE"}<br/><span style={{fontSize:10}}>{displayAmount(raiseAmt)}</span>
+                    {raiseAmt>=rMax?"ALL-IN":"RAISE"}<br/><span style={{fontSize:12,fontWeight:700}}>{displayAmount(raiseAmt)}</span>
                   </button>
                 </div>
               </div>
