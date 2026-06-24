@@ -290,9 +290,13 @@ function useWS(url: string, onMessage?: (m: any) => void) {
           else if (m.type==="spectating") {
             // Show table as spectator - user will click a seat to join
             setTable({...m.table});
+            setView("table");
             if (typeof sessionStorage!=="undefined") {
               if (m.currency) setCurrencyCache(m.currency);
-              // DON'T clear join_room_id yet - needed for when they sit down
+              if (m.roomId) {
+                sessionStorage.setItem("table_currency", m.currency || "chips");
+                sessionStorage.setItem("current_room_id", m.roomId);
+              }
             }
           }
         } catch(e) { console.error("WS parse error",e); }
@@ -916,9 +920,9 @@ function RoomSettings({ onConfirm, onCancel, playerName }: { onConfirm:(s:any)=>
   const [roomName, setRoomName] = useState(`${playerName}'s Table`);
 
   function toInternal(n: number) {
-    if (currency === 'sol') return Math.round(n * 1e9);
-    if (currency === 'usd') return Math.round(n * 100); // 1 cent = 1 lamport
-    return Math.round(n); // chips: 1:1
+    if (currency === 'sol') return Math.min(Math.round(n * 1e9), 100 * 1e9); // max 100 SOL
+    if (currency === 'usd') return Math.min(Math.round(n * 100), 100_000_00); // max $100,000
+    return Math.min(Math.round(n), 10_000_000); // max 10M chips
   }
 
   const presetBlinds = currency === 'chips'
