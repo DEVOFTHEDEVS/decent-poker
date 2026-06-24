@@ -475,6 +475,8 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy, onPause,
 }) {
   const [chatText, setChatText] = useState("");
   const [chatOpen, setChatOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"chat"|"ledger">("chat");
+  const [handHistory, setHandHistory] = useState<{winners:{name:string;amount:number;hand:string}[];street:string}[]>([]);
   const [adminOpen, setAdminOpen] = useState(false);
   const [raiseAmt, setRaiseAmt] = useState(0);
   const [timeLeft, setTimeLeft] = useState(20);
@@ -482,6 +484,7 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy, onPause,
   const chatRef = useRef<HTMLDivElement>(null);
   const prevTable = useRef<TableState|null>(null);
   const lastCompletedNonce = useRef<number>(-1);
+  const lastHistoryNonce = useRef<number>(-1);
   const lastKnownChips = useRef<number>(-1);
   const wasSeated = useRef<boolean>(false);
   const beeped = useRef<Set<number>>(new Set());
@@ -778,45 +781,92 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy, onPause,
         )}
       </div>
 
-      {/* ACTION LOG — compact strip */}
-      {(table.actionLog?.length||0)>0&&(
-        <div style={{padding:"4px 10px",background:"rgba(10,10,15,0.9)",borderTop:"1px solid rgba(255,255,255,0.04)",flexShrink:0,display:"flex",gap:6,overflowX:"auto"}}>
-          {[...table.actionLog].slice(-6).map((e,i)=>(
-            <div key={i} style={{display:"flex",gap:3,fontSize:10,whiteSpace:"nowrap",flexShrink:0}}>
-              <span style={{color:"#475569"}}>{e.name.slice(0,6)}</span>
-              <span style={{color:e.label==="FOLD"?"#ef4444":e.label==="CHECK"?"#64748b":e.label==="ALL-IN"?"#f97316":"#818cf8",fontWeight:600}}>{e.label}{e.amount?` ${displayAmount(e.amount)}`:""}</span>
-            </div>
-          ))}
-        </div>
-      )}
+      {/* CHAT + LEDGER — fixed bottom-left corner */}
+      <div style={{position:"fixed",bottom:16,left:16,zIndex:90,display:"flex",flexDirection:"column",alignItems:"flex-start",gap:6}}>
+        {/* Chat toggle button */}
+        <button onClick={()=>setChatOpen(v=>!v)} style={{padding:"8px 12px",background:"rgba(10,10,20,0.95)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:10,color:unread>0?"#facc15":"#94a3b8",fontSize:12,fontWeight:700,cursor:"pointer",backdropFilter:"blur(8px)",display:"flex",alignItems:"center",gap:6}}>
+          💬 {chatOpen?"HIDE":"CHAT"}{unread>0&&<span style={{background:"#ef4444",color:"#fff",borderRadius:"50%",width:18,height:18,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10}}>{unread}</span>}
+        </button>
 
-      {/* CHAT SLIDE-UP */}
-      {chatOpen&&(
-        <div style={{position:"absolute",bottom:0,left:0,right:0,background:"rgba(15,23,42,0.98)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:"16px 16px 0 0",zIndex:40,maxHeight:"50vh",display:"flex",flexDirection:"column"}}>
-          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"10px 14px",borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
-            <span style={{fontSize:12,fontWeight:600,color:"#94a3b8"}}>Table Chat</span>
-            <button onClick={()=>setChatOpen(false)} style={{background:"none",border:"none",color:"#64748b",fontSize:18,cursor:"pointer",lineHeight:1}}>×</button>
-          </div>
-          <div ref={chatRef} style={{flex:1,overflowY:"auto",padding:"8px 12px",display:"flex",flexDirection:"column",gap:5}}>
-            {!table.chat?.length?<div style={{color:"#1e293b",textAlign:"center",fontSize:12,padding:16}}>No messages yet</div>:
-              table.chat.map(m=>(
-                <div key={m.id} style={{display:"flex",flexDirection:"column",alignItems:m.seat===you?.seat?"flex-end":"flex-start"}}>
-                  <span style={{fontSize:9,color:"#475569",marginBottom:1}}>{m.name}</span>
-                  <div style={{padding:"4px 10px",borderRadius:10,fontSize:12,maxWidth:"85%",background:m.seat===you?.seat?"rgba(67,56,202,0.4)":"rgba(30,41,59,0.8)",color:m.seat===you?.seat?"#c7d2fe":"#cbd5e1"}}>{m.text}</div>
-                </div>
+        {/* Chat + Ledger panel */}
+        {chatOpen&&(
+          <div style={{width:280,background:"rgba(10,10,20,0.97)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:12,overflow:"hidden",boxShadow:"0 8px 32px rgba(0,0,0,0.7)",backdropFilter:"blur(8px)",display:"flex",flexDirection:"column",maxHeight:"55vh"}}>
+            {/* Tabs */}
+            <div style={{display:"flex",borderBottom:"1px solid rgba(255,255,255,0.06)"}}>
+              {(["chat","ledger"] as const).map(tab=>(
+                <button key={tab} onClick={()=>setActiveTab(tab as any)} style={{flex:1,padding:"8px 0",background:activeTab===tab?"rgba(99,102,241,0.15)":"transparent",border:"none",color:activeTab===tab?"#a5b4fc":"#475569",fontSize:11,fontWeight:700,cursor:"pointer",letterSpacing:1}}>
+                  {tab==="chat"?"💬 CHAT":"📋 LEDGER"}
+                </button>
               ))}
+              <button onClick={()=>setChatOpen(false)} style={{padding:"8px 10px",background:"none",border:"none",color:"#475569",cursor:"pointer",fontSize:14}}>✕</button>
+            </div>
+
+            {activeTab==="chat" ? (<>
+              <div ref={chatRef} style={{flex:1,overflowY:"auto",padding:"8px 10px",display:"flex",flexDirection:"column",gap:5,minHeight:120,maxHeight:220}}>
+                {!table.chat?.length
+                  ? <div style={{color:"#334155",textAlign:"center",fontSize:11,padding:16}}>No messages yet</div>
+                  : table.chat.map(m=>(
+                    <div key={m.id} style={{display:"flex",flexDirection:"column",alignItems:m.seat===you?.seat?"flex-end":"flex-start"}}>
+                      <span style={{fontSize:9,color:"#475569",marginBottom:1}}>{m.name}</span>
+                      <div style={{padding:"4px 9px",borderRadius:8,fontSize:12,maxWidth:"85%",background:m.seat===you?.seat?"rgba(67,56,202,0.4)":"rgba(30,41,59,0.8)",color:m.seat===you?.seat?"#c7d2fe":"#cbd5e1"}}>{m.text}</div>
+                    </div>
+                  ))}
+              </div>
+              <div style={{padding:"6px 8px",borderTop:"1px solid rgba(255,255,255,0.05)"}}>
+                <div style={{display:"flex",gap:5}}>
+                  <input value={chatText} onChange={e=>setChatText(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&chatText.trim()&&you){onChat(chatText.trim());setChatText("");}}} placeholder={you?"Message…":"Sit down to chat"} disabled={!you} maxLength={140}
+                    style={{flex:1,background:"rgba(30,41,59,0.8)",border:"1px solid rgba(255,255,255,0.07)",borderRadius:7,padding:"7px 9px",fontSize:12,color:"#e2e8f0",outline:"none"}}/>
+                  <button onClick={()=>{if(chatText.trim()&&you){onChat(chatText.trim());setChatText("");}}} style={{padding:"7px 11px",background:"#4338ca",border:"none",borderRadius:7,color:"#fff",fontWeight:700,cursor:"pointer",fontSize:14}}>→</button>
+                </div>
+                {you&&<div style={{display:"flex",gap:4,marginTop:5,justifyContent:"center"}}>
+                  {["😂","😤","🤔","😭","🔥","💩","👋"].map(e=><button key={e} onClick={()=>{if(you)onChat(e);}} style={{fontSize:18,background:"none",border:"none",cursor:"pointer",padding:1}}>{e}</button>)}
+                </div>}
+              </div>
+            </>) : (
+              <div style={{flex:1,overflowY:"auto",padding:"6px 8px",minHeight:120,maxHeight:280}}>
+                {/* Current hand action log */}
+                {(table.actionLog?.length||0)>0&&(
+                  <div style={{marginBottom:8}}>
+                    <div style={{fontSize:9,color:"#475569",fontWeight:700,letterSpacing:1,marginBottom:4}}>THIS HAND</div>
+                    {[...table.actionLog].reverse().map((e,i)=>(
+                      <div key={i} style={{display:"flex",justifyContent:"space-between",fontSize:11,padding:"2px 0",borderBottom:"1px solid rgba(255,255,255,0.03)"}}>
+                        <span style={{color:"#94a3b8"}}>{e.name}</span>
+                        <span style={{color:e.label==="FOLD"?"#ef4444":e.label==="CHECK"?"#64748b":e.label==="ALL-IN"?"#f97316":e.label==="RAISE"||e.label==="BET"?"#f59e0b":"#22c55e",fontWeight:600}}>
+                          {e.label}{e.amount?" "+displayAmount(e.amount):""}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {/* Hand history from lastResult */}
+                {handHistory.length>0&&(
+                  <div>
+                    <div style={{fontSize:9,color:"#475569",fontWeight:700,letterSpacing:1,marginBottom:4}}>HAND HISTORY</div>
+                    {handHistory.slice().reverse().map((h,i)=>(
+                      <div key={i} style={{padding:"5px 0",borderBottom:"1px solid rgba(255,255,255,0.04)"}}>
+                        <div style={{display:"flex",justifyContent:"space-between",marginBottom:1}}>
+                          <span style={{fontSize:10,color:"#6366f1",fontWeight:700}}>Hand #{handHistory.length-i}</span>
+                          <span style={{fontSize:9,color:"#475569"}}>{h.street}</span>
+                        </div>
+                        {h.winners.map((w,j)=>(
+                          <div key={j} style={{display:"flex",justifyContent:"space-between",fontSize:11}}>
+                            <span style={{color:"#facc15",fontWeight:700}}>🏆 {w.name}</span>
+                            <span style={{color:"#22c55e",fontFamily:"monospace",fontWeight:700}}>+{displayAmount(w.amount)}</span>
+                          </div>
+                        ))}
+                        {h.winners[0]?.hand&&h.winners[0].hand!=="win"&&<div style={{fontSize:10,color:"#64748b",fontStyle:"italic"}}>{h.winners[0].hand}</div>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {handHistory.length===0&&(table.actionLog?.length||0)===0&&(
+                  <div style={{color:"#334155",textAlign:"center",fontSize:11,padding:16}}>No hands played yet</div>
+                )}
+              </div>
+            )}
           </div>
-          <div style={{display:"flex",gap:6,padding:"8px 12px",borderTop:"1px solid rgba(255,255,255,0.06)"}}>
-            <input value={chatText} onChange={e=>setChatText(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&chatText.trim()&&you){onChat(chatText.trim());setChatText("");}}} placeholder={you?"Message…":"Sit to chat"} disabled={!you} maxLength={140}
-              style={{flex:1,background:"rgba(30,41,59,0.8)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:8,padding:"8px 10px",fontSize:13,color:"#e2e8f0",outline:"none"}}/>
-            <button onClick={()=>{if(chatText.trim()&&you){onChat(chatText.trim());setChatText("");}}} style={{padding:"8px 14px",background:"#4338ca",border:"none",borderRadius:8,color:"#fff",fontWeight:700,cursor:"pointer"}}>→</button>
-          </div>
-          {/* Reactions */}
-          {you&&<div style={{display:"flex",gap:6,padding:"6px 12px 10px",justifyContent:"center"}}>
-            {["😂","😤","🤔","😭","🔥","💩","👋"].map(e=><button key={e} onClick={()=>{}} style={{fontSize:22,background:"none",border:"none",cursor:"pointer",padding:2}}>{e}</button>)}
-          </div>}
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
