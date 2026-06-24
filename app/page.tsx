@@ -657,31 +657,32 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy, onPause,
             {/* Main action buttons - horizontal row like PokerNow */}
             <div style={{display:"flex",gap:6}}>
               {!you.canCheck && (
-                <button onClick={()=>onAct({type:"call"})}
-                  style={{flex:1,padding:"13px 0",background:"transparent",border:"2px solid #22c55e",borderRadius:8,color:"#22c55e",fontWeight:800,fontSize:14,cursor:"pointer",letterSpacing:0.5}}>
+                <button className="btn-call" onClick={()=>onAct({type:"call"})}>
                   CALL<br/><span style={{fontSize:11,fontWeight:600,opacity:0.8}}>{displayAmount(you.toCall)}</span>
                 </button>
               )}
               {canRaise && (
-                <button onClick={()=>onAct({type:raiseAmt>=rMax?"allin":"raise",amount:raiseAmt})}
-                  style={{flex:1,padding:"13px 0",background:"transparent",border:"2px solid #f59e0b",borderRadius:8,color:"#f59e0b",fontWeight:800,fontSize:14,cursor:"pointer",letterSpacing:0.5}}>
+                <button className="btn-raise" onClick={()=>onAct({type:raiseAmt>=rMax?"allin":"raise",amount:raiseAmt})}>
                   RAISE<br/><span style={{fontSize:11,fontWeight:600,opacity:0.8}}>{displayAmount(raiseAmt)}</span>
                 </button>
               )}
               {you.canCheck && (
-                <button onClick={()=>onAct({type:"check"})}
-                  style={{flex:1,padding:"13px 0",background:"transparent",border:"2px solid #64748b",borderRadius:8,color:"#94a3b8",fontWeight:800,fontSize:14,cursor:"pointer",letterSpacing:0.5}}>
-                  CHECK
+                <button className="btn-check" onClick={()=>onAct({type:"check"})}>
+                  CHECK ✓
                 </button>
               )}
               {you && !you.allIn && you.chips > 0 && you.toCall >= you.chips && (
-                <button onClick={()=>onAct({type:"allin"})}
-                  style={{flex:1,padding:"13px 0",background:"transparent",border:"2px solid #f97316",borderRadius:8,color:"#f97316",fontWeight:800,fontSize:14,cursor:"pointer",letterSpacing:0.5}}>
+                <button className="btn-allin" onClick={()=>onAct({type:"allin"})}>
                   ALL-IN<br/><span style={{fontSize:11,fontWeight:600,opacity:0.8}}>{displayAmount(you.chips)}</span>
                 </button>
               )}
-              <button onClick={()=>onAct({type:"fold"})}
-                style={{flex:1,padding:"13px 0",background:"transparent",border:"2px solid #ef4444",borderRadius:8,color:"#ef4444",fontWeight:800,fontSize:14,cursor:"pointer",letterSpacing:0.5}}>
+              <button className="btn-fold" onClick={()=>{
+                if(you.canCheck){
+                  if(window.confirm("You can check for free — sure you want to fold?")) onAct({type:"fold"});
+                } else {
+                  onAct({type:"fold"});
+                }
+              }}>
                 FOLD
               </button>
             </div>
