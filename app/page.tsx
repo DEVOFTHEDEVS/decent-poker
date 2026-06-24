@@ -1355,8 +1355,15 @@ export default function App() {
           onLeave={handleLeave}
           onSitDown={(seatIdx)=>{
             setSelectedSeat(seatIdx??null);
-            const cur = typeof sessionStorage!=="undefined" ? sessionStorage.getItem("table_currency")||"chips" : "chips";
-            setSitConfirmAmt(cur==="usd"?"50":cur==="sol"?"1":"1000");
+            const cur = _currentCurrency || (typeof sessionStorage!=="undefined" ? sessionStorage.getItem("table_currency")||"chips" : "chips");
+            // Check if we have a buy-in from the invite page
+            const inviteBuyIn = typeof sessionStorage!=="undefined" ? sessionStorage.getItem("join_room_buyin") : null;
+            if (inviteBuyIn) {
+              setSitConfirmAmt(inviteBuyIn);
+              if (typeof sessionStorage!=="undefined") sessionStorage.removeItem("join_room_buyin");
+            } else {
+              setSitConfirmAmt(cur==="usd"?"50":cur==="sol"?"1":"1000");
+            }
           }}
           onRebuy={()=>setShowRebuy(true)}
           onPause={()=>{
