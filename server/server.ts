@@ -481,6 +481,13 @@ export class PokerServer {
         } else if (action === "remove_player") {
           const seat = (table as any).seats?.find((s: any) => s?.name?.toLowerCase() === targetName?.toLowerCase());
           if (seat) {
+            // Find the kicked player's WS client and notify them with currency
+            let roomCurrency = (table as any)._currency || 'chips';
+            for (const [, r] of this.dynamicRooms) { if (r.tableId === client.tableId) { roomCurrency = r.currency || 'chips'; break; } }
+            const kickedClient = Array.from(this.clients.values()).find(cl => cl.playerId === seat.id);
+            if (kickedClient) {
+              this.send(kickedClient.ws, { type: "kicked", message: "You were removed by the host.", currency: roomCurrency });
+            }
             table.leave(seat.id);
           }
         }

@@ -14,9 +14,21 @@ const sol = (l: number) => (l / 1e9).toFixed(3);
 // chip mode: values stored as plain numbers (1 chip = 1 lamport)
 // sol mode: values stored as lamports (1 SOL = 1_000_000_000)
 // usd mode: same as chip mode but shows $ prefix
-// Global currency cache - updated whenever we get table state
-let _currentCurrency = typeof sessionStorage !== "undefined" ? sessionStorage.getItem("table_currency") || "chips" : "chips";
-function setCurrencyCache(c: string) { _currentCurrency = c; if(typeof sessionStorage!=="undefined") sessionStorage.setItem("table_currency",c); }
+// Global currency cache - persisted in both sessionStorage and localStorage
+function _initCurrency(): string {
+  if (typeof sessionStorage === "undefined") return "chips";
+  return sessionStorage.getItem("table_currency") 
+    || (typeof localStorage !== "undefined" ? localStorage.getItem("table_currency") : null)
+    || sessionStorage.getItem("room_currency")
+    || "chips";
+}
+let _currentCurrency = _initCurrency();
+function setCurrencyCache(c: string) {
+  if (!c || c === "undefined") return;
+  _currentCurrency = c;
+  if (typeof sessionStorage !== "undefined") sessionStorage.setItem("table_currency", c);
+  if (typeof localStorage !== "undefined") localStorage.setItem("table_currency", c); // persist across kicks
+}
 
 function displayAmount(l: number, mode?: string): string {
   const m = mode || _currentCurrency || "chips";
@@ -252,7 +264,13 @@ function useWS(url: string, onMessage?: (m: any) => void) {
             }
             s.send(JSON.stringify({type:"lobby"}));
           }
-          else if (m.type==="kicked") { setTable(null); setError("You were removed from the table."); if (typeof sessionStorage!=="undefined") sessionStorage.removeItem("current_table_id"); }
+          else if (m.type==="kicked") {
+            // Save currency before clearing table state
+            if (m.currency) setCurrencyCache(m.currency);
+            setTable(null);
+            setError("You were removed from the table by the host.");
+            if (typeof sessionStorage!=="undefined") sessionStorage.removeItem("current_table_id");
+          }
           else if (m.type==="spectating") {
             // Show table as spectator - user will click a seat to join
             setTable({...m.table});
