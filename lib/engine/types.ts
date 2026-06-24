@@ -133,12 +133,6 @@ export interface TableState {
   minSol: number;
   // serverSeedHash published before each hand for provably fair
   currentSeedHash: string;
-  // Blind schedule (tournament mode)
-  blindLevel?: number;
-  blindSchedule?: {sb: number; bb: number; durationMs: number}[] | null;
-  nextBlindTime?: number | null;
-  gamePaused?: boolean;
-  ante?: number;
 }
 
 // ── Client View (player-specific) ────────────────────────────────────────────
@@ -206,8 +200,6 @@ export type ClientMessage =
   | { type: "cashout";    tableId: string }
   | { type: "lobby" }
   | { type: "ping" }
-  | { type: "rebuy"; tableId: string; chips: number; playerSeed: string }
-  | { type: "rejoin"; tableId: string; playerSeed: string }
   | { type: "practice";    tableId: string; name: string; playerSeed: string }
   | { type: "create_room"; name: string; playerSeed: string; sb: number; bb: number; maxPlayers: number; roomName: string }
   | { type: "join_room";   roomId: string; name: string; playerSeed: string }
@@ -226,9 +218,4 @@ export interface LobbyTable {
   bbSol: number;
   minSol: number;
   maxSol: number;
-  blindLevel?: number;
-  blindSchedule?: {sb: number; bb: number; durationMs: number}[] | null;
-  nextBlindTime?: number | null;
-  gamePaused?: boolean;
-  ante?: number;
 }

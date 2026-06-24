@@ -101,3 +101,12 @@ button { -webkit-tap-highlight-color: transparent; user-select: none; }
     bottom: 180px !important;
   }
 }
+
+/* Mobile: compact everything */
+@media (max-width: 480px) {
+  .btn-call, .btn-raise, .btn-check, .btn-allin, .btn-fold {
+    padding: 9px 4px;
+    font-size: 12px;
+    letter-spacing: 0;
+  }
+}
