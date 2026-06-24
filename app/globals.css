@@ -86,3 +86,18 @@ button { -webkit-tap-highlight-color: transparent; user-select: none; }
 ::-webkit-scrollbar { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+
+/* Mobile: stack action panel full width at bottom */
+@media (max-width: 480px) {
+  .btn-call, .btn-raise, .btn-check, .btn-allin, .btn-fold {
+    padding: 9px 0;
+    font-size: 11px;
+  }
+}
+
+/* Prevent chat from overlapping action panel on small screens */
+@media (max-width: 640px) {
+  .chat-panel-container {
+    bottom: 180px !important;
+  }
+}

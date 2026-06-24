@@ -30,6 +30,14 @@ function setCurrencyCache(c: string) {
   if (typeof localStorage !== "undefined") localStorage.setItem("table_currency", c); // persist across kicks
 }
 
+// Returns raw number for input fields (no $ symbol)
+function displayAmountRaw(l: number): number {
+  const m = _currentCurrency || "chips";
+  if (m === "usd") return Math.round(l / 100 * 100) / 100;
+  if (m === "sol") return Math.round(l / 1e9 * 1000) / 1000;
+  return l;
+}
+
 function displayAmount(l: number, mode?: string): string {
   const m = mode || _currentCurrency || "chips";
   if (m === "chips") {
@@ -92,7 +100,7 @@ const Sounds = {
 // ── Card ──────────────────────────────────────────────────────────────────────
 function PlayingCard({ card, small, highlight }: { card: Card|"back"|null; small?: boolean; highlight?: boolean }) {
   if (!card) return null;
-  const w=small?41:92; const h=small?57:128; const fs=small?11:19;
+  const w=small?36:78; const h=small?50:108; const fs=small?10:17;
   if (card==="back") return (
     <div style={{width:w,height:h,borderRadius:5,background:"linear-gradient(135deg,#1e1b4b,#312e81)",border:"1px solid #4338ca",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center"}}>
       <div style={{width:"78%",height:"78%",borderRadius:3,border:"1px solid rgba(99,102,241,0.3)",background:"repeating-linear-gradient(45deg,transparent,transparent 3px,rgba(99,102,241,0.08) 3px,rgba(99,102,241,0.08) 6px)"}}/>
@@ -102,7 +110,7 @@ function PlayingCard({ card, small, highlight }: { card: Card|"back"|null; small
   return (
     <div style={{width:w,height:h,borderRadius:5,background:"#f8fafc",border:highlight?"2px solid #facc15":"1px solid #e2e8f0",flexShrink:0,padding:2,display:"flex",flexDirection:"column",justifyContent:"space-between",boxShadow:highlight?"0 0 10px rgba(250,204,21,0.5)":"0 2px 6px rgba(0,0,0,0.5)"}}>
       <div style={{color,fontSize:card.r==="T"?fs-1:fs,fontWeight:800,lineHeight:1.1}}>{card.r==="T"?"10":card.r}<br/><span style={{fontSize:fs-1}}>{card.s}</span></div>
-      <div style={{color,fontSize:small?18:32,textAlign:"center",lineHeight:1}}>{card.s}</div>
+      <div style={{color,fontSize:small?16:27,textAlign:"center",lineHeight:1}}>{card.s}</div>
       <div style={{color,fontSize:card.r==="T"?fs-1:fs,fontWeight:800,lineHeight:1.1,transform:"rotate(180deg)"}}>{card.r==="T"?"10":card.r}<br/><span style={{fontSize:fs-1}}>{card.s}</span></div>
     </div>
   );
@@ -476,7 +484,12 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy, onPause,
   const [chatText, setChatText] = useState("");
   const [chatOpen, setChatOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"chat"|"ledger">("chat");
-  const [handHistory, setHandHistory] = useState<{winners:{name:string;amount:number;hand:string}[];street:string}[]>([]);
+  const [handHistory, setHandHistory] = useState<{winners:{name:string;amount:number;hand:string}[];street:string}[]>(()=>{
+    try {
+      const saved = typeof localStorage!=="undefined" ? localStorage.getItem("hand_history") : null;
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
   const [adminOpen, setAdminOpen] = useState(false);
   const [raiseAmt, setRaiseAmt] = useState(0);
   const [timeLeft, setTimeLeft] = useState(20);
@@ -623,16 +636,16 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy, onPause,
       </div>
 
       {/* FELT — takes remaining space */}
-      <div style={{position:"relative",flex:"1 1 0",minHeight:0,overflow:"hidden"}}>
+      <div style={{position:"relative",flex:"1 1 0",minHeight:0,overflow:"visible"}}>
         {/* Oval background */}
-        <div style={{position:"absolute",inset:"4px",borderRadius:"45%",background:"radial-gradient(ellipse at 50% 40%,#166534,#14532d,#052e16)",border:"8px solid rgba(120,53,15,0.5)",boxShadow:"inset 0 0 40px rgba(0,0,0,0.5)",overflow:"hidden"}}>
+        <div style={{position:"absolute",inset:"8% 6%",borderRadius:"45%",background:"radial-gradient(ellipse at 50% 40%,#166534,#14532d,#052e16)",border:"8px solid rgba(120,53,15,0.5)",boxShadow:"inset 0 0 40px rgba(0,0,0,0.5), 0 0 60px rgba(0,0,0,0.6)",overflow:"visible"}}>
           {/* Center content */}
           <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,pointerEvents:"none",zIndex:2}}>
             {table.handActive&&table.street&&<div style={{padding:"1px 8px",background:"rgba(0,0,0,0.35)",borderRadius:12,color:"rgba(134,239,172,0.7)",fontSize:9,fontFamily:"monospace",letterSpacing:3}}>{table.street.toUpperCase()}</div>}
             {/* Community cards */}
             <div style={{display:"flex",gap:4}}>
               {(table.board||[]).map((c,i)=><PlayingCard key={i} card={c} highlight={winCards?.has(c.r+c.s)}/>)}
-              {Array.from({length:5-(table.board?.length||0)}).map((_,i)=><div key={i} style={{width:92,height:128,borderRadius:5,border:"1px solid rgba(255,255,255,0.07)",background:"rgba(0,0,0,0.15)"}}/>)}
+              {Array.from({length:5-(table.board?.length||0)}).map((_,i)=><div key={i} style={{width:78,height:108,borderRadius:5,border:"1px solid rgba(255,255,255,0.07)",background:"rgba(0,0,0,0.15)"}}/>)}
             </div>
             {/* Pot */}
             {pot>0&&(
@@ -649,7 +662,7 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy, onPause,
             {!table.handActive&&<div style={{color:"rgba(134,239,172,0.12)",fontSize:11,fontWeight:900,letterSpacing:3}}>{table.seated>=2?"NEXT HAND SOON":"WAITING FOR PLAYERS"}</div>}
           </div>
           {/* Seats */}
-          <div style={{position:"absolute",inset:0,zIndex:10}}>
+          <div style={{position:"absolute",inset:"-15%",zIndex:10}}>
             {table.seats.map((seat,i)=>{
               const pos=seatPos(i);
               if(!seat) return <EmptySeat key={i} pos={pos} canSit={!you&&!!onSitDown} onClick={(idx)=>onSitDown?.(idx)} seatIdx={i}/>;
@@ -669,8 +682,8 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy, onPause,
 
 
 
-      {/* ACTION PANEL - fixed bottom right */}
-      <div style={{position:"fixed",bottom:16,right:16,zIndex:100,width:320,background:"rgba(10,10,20,0.97)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:14,padding:"12px",boxShadow:"0 8px 32px rgba(0,0,0,0.7)",backdropFilter:"blur(8px)"}}>
+      {/* ACTION PANEL - fixed bottom right, responsive */}
+      <div style={{position:"fixed",bottom:0,right:0,zIndex:100,width:"min(340px,100vw)",background:"rgba(10,10,20,0.97)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:"14px 14px 0 0",padding:"10px 12px 16px",boxShadow:"0 -4px 32px rgba(0,0,0,0.7)",backdropFilter:"blur(8px)"}}>
         {(table as any).gamePaused && (
           <div style={{textAlign:"center",padding:"10px",background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.3)",borderRadius:8,color:"#fca5a5",fontWeight:700,fontSize:13,marginBottom:4}}>
             ⏸ Game paused by host
@@ -726,6 +739,15 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy, onPause,
                 </div>
                 <div style={{display:"flex",gap:6,alignItems:"center"}}>
                   <input type="range" min={rMin} max={rMax} step={Math.max(1,Math.floor(bb/2))} value={raiseAmt} onChange={e=>setRaiseAmt(+e.target.value)} style={{flex:1,accentColor:"#f59e0b"}}/>
+                </div>
+                <div style={{display:"flex",gap:6,alignItems:"center"}}>
+                  <input type="number" value={displayAmountRaw(raiseAmt)} onChange={e=>{
+                    const cur = _currentCurrency;
+                    const raw = parseFloat(e.target.value)||0;
+                    const lam = cur==="usd"?Math.round(raw*100):cur==="sol"?Math.round(raw*1e9):Math.round(raw);
+                    const clamped = Math.max(rMin,Math.min(rMax,lam));
+                    setRaiseAmt(clamped);
+                  }} placeholder="Custom amount" style={{flex:1,background:"rgba(30,41,59,0.8)",border:"1px solid rgba(245,158,11,0.3)",borderRadius:7,padding:"7px 10px",fontSize:13,color:"#f59e0b",outline:"none",fontFamily:"monospace"}}/>
                   <button onClick={()=>onAct({type:raiseAmt>=rMax?"allin":"raise",amount:raiseAmt})}
                     style={{padding:"8px 12px",background:"transparent",border:`2px solid ${raiseAmt>=rMax?"#f97316":"#f59e0b"}`,borderRadius:7,color:raiseAmt>=rMax?"#f97316":"#f59e0b",fontWeight:800,fontSize:12,cursor:"pointer",whiteSpace:"nowrap",minWidth:90}}>
                     {raiseAmt>=rMax?"ALL-IN":"RAISE"}<br/><span style={{fontSize:12,fontWeight:700}}>{displayAmount(raiseAmt)}</span>
@@ -782,7 +804,7 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy, onPause,
       </div>
 
       {/* CHAT + LEDGER — fixed bottom-left corner */}
-      <div style={{position:"fixed",bottom:16,left:16,zIndex:90,display:"flex",flexDirection:"column",alignItems:"flex-start",gap:6}}>
+      <div style={{position:"fixed",bottom:0,left:0,zIndex:90,padding:"0 0 16px 12px",display:"flex",flexDirection:"column",alignItems:"flex-start",gap:6}}>
         {/* Chat toggle button */}
         <button onClick={()=>setChatOpen(v=>!v)} style={{padding:"8px 12px",background:"rgba(10,10,20,0.95)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:10,color:unread>0?"#facc15":"#94a3b8",fontSize:12,fontWeight:700,cursor:"pointer",backdropFilter:"blur(8px)",display:"flex",alignItems:"center",gap:6}}>
           💬 {chatOpen?"HIDE":"CHAT"}{unread>0&&<span style={{background:"#ef4444",color:"#fff",borderRadius:"50%",width:18,height:18,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10}}>{unread}</span>}
