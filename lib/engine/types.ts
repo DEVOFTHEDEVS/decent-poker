@@ -200,6 +200,7 @@ export type ClientMessage =
   | { type: "cashout";    tableId: string }
   | { type: "lobby" }
   | { type: "ping" }
+  | { type: "rejoin"; tableId: string; playerSeed: string }
   | { type: "practice";    tableId: string; name: string; playerSeed: string }
   | { type: "create_room"; name: string; playerSeed: string; sb: number; bb: number; maxPlayers: number; roomName: string }
   | { type: "join_room";   roomId: string; name: string; playerSeed: string }

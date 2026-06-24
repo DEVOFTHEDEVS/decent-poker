@@ -635,8 +635,8 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy, onPause,
         </div>
       </div>
 
-      {/* FELT — takes remaining space, pad bottom for action panel */}
-      <div style={{position:"relative",flex:"1 1 0",minHeight:0,overflow:"visible",paddingBottom:"clamp(160px, 35vh, 220px)"}}>
+      {/* FELT */}
+      <div className="felt-area" style={{position:"relative",flex:"1 1 0",minHeight:0,overflow:"visible"}}>
         {/* Oval background */}
         <div style={{position:"absolute",inset:"8% 6%",borderRadius:"45%",background:"radial-gradient(ellipse at 50% 40%,#166534,#14532d,#052e16)",border:"8px solid rgba(120,53,15,0.5)",boxShadow:"inset 0 0 40px rgba(0,0,0,0.5), 0 0 60px rgba(0,0,0,0.6)",overflow:"visible"}}>
           {/* Center content */}
@@ -682,8 +682,8 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy, onPause,
 
 
 
-      {/* ACTION PANEL - full width at bottom */}
-      <div style={{position:"fixed",bottom:0,left:0,right:0,zIndex:100,background:"rgba(8,8,18,0.98)",borderTop:"1px solid rgba(255,255,255,0.12)",padding:"6px 10px 10px",boxShadow:"0 -4px 32px rgba(0,0,0,0.8)"}}>
+      {/* ACTION PANEL */}
+      <div className="action-panel">
         {(table as any).gamePaused && (
           <div style={{textAlign:"center",padding:"10px",background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.3)",borderRadius:8,color:"#fca5a5",fontWeight:700,fontSize:13,marginBottom:4}}>
             ⏸ Game paused by host
@@ -806,7 +806,7 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy, onPause,
       </div>
 
       {/* CHAT + LEDGER — fixed bottom-left corner */}
-      <div style={{position:"fixed",bottom:"clamp(155px,33vh,210px)",left:8,zIndex:90,display:"flex",flexDirection:"column",alignItems:"flex-start",gap:6}}>
+      <div className="chat-panel-container">
         {/* Chat toggle button */}
         <button onClick={()=>setChatOpen(v=>!v)} style={{padding:"8px 12px",background:"rgba(10,10,20,0.95)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:10,color:unread>0?"#facc15":"#94a3b8",fontSize:12,fontWeight:700,cursor:"pointer",backdropFilter:"blur(8px)",display:"flex",alignItems:"center",gap:6}}>
           💬 {chatOpen?"HIDE":"CHAT"}{unread>0&&<span style={{background:"#ef4444",color:"#fff",borderRadius:"50%",width:18,height:18,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10}}>{unread}</span>}

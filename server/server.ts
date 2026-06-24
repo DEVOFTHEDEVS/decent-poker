@@ -241,6 +241,25 @@ export class PokerServer {
         break;
       }
 
+      case "rejoin": {
+        // Client reconnected and wants to resume their session
+        const { tableId: rjTableId, playerSeed: rjSeed } = msg;
+        const rjTable = this.tables.get(rjTableId);
+        if (!rjTable) { this.send(client.ws, { type: "error", message: "Table not found" }); return; }
+        const rjPlayerId = `player_${rjSeed.slice(0, 12)}`;
+        const rjSeat = rjTable.getClientState(rjPlayerId);
+        if (rjSeat.you) {
+          // Player is still seated
+          client.playerId = rjPlayerId;
+          client.tableId = rjTableId;
+          client.isSpectator = false;
+          this.send(client.ws, { type: "joined", table: rjTable.getClientState(rjPlayerId) });
+        } else {
+          this.send(client.ws, { type: "error", message: "Session expired" });
+        }
+        break;
+      }
+
       case "cashout": {
         if (!client.playerId || !client.tableId) return;
         const table = this.tables.get(client.tableId);
