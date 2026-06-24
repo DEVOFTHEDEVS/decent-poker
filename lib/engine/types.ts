@@ -133,6 +133,12 @@ export interface TableState {
   minSol: number;
   // serverSeedHash published before each hand for provably fair
   currentSeedHash: string;
+  // Blind schedule (tournament mode)
+  blindLevel?: number;
+  blindSchedule?: {sb: number; bb: number; durationMs: number}[] | null;
+  nextBlindTime?: number | null;
+  gamePaused?: boolean;
+  ante?: number;
 }
 
 // ── Client View (player-specific) ────────────────────────────────────────────
@@ -153,6 +159,12 @@ export interface YouState {
 export interface ClientTableState extends Omit<TableState, "seats"> {
   seats: (ClientSeat | null)[];
   you: YouState | null;
+  // Explicitly re-declare optional fields to ensure they're in type
+  blindLevel?: number;
+  blindSchedule?: {sb: number; bb: number; durationMs: number}[] | null;
+  nextBlindTime?: number | null;
+  gamePaused?: boolean;
+  ante?: number;
 }
 
 export interface ClientSeat extends Omit<Seat, "cards"> {
@@ -200,6 +212,7 @@ export type ClientMessage =
   | { type: "cashout";    tableId: string }
   | { type: "lobby" }
   | { type: "ping" }
+  | { type: "rebuy"; tableId: string; chips: number; playerSeed: string }
   | { type: "rejoin"; tableId: string; playerSeed: string }
   | { type: "practice";    tableId: string; name: string; playerSeed: string }
   | { type: "create_room"; name: string; playerSeed: string; sb: number; bb: number; maxPlayers: number; roomName: string }
@@ -219,4 +232,9 @@ export interface LobbyTable {
   bbSol: number;
   minSol: number;
   maxSol: number;
+  blindLevel?: number;
+  blindSchedule?: {sb: number; bb: number; durationMs: number}[] | null;
+  nextBlindTime?: number | null;
+  gamePaused?: boolean;
+  ante?: number;
 }
