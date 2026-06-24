@@ -619,7 +619,7 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy, onPause,
       {adminOpen && isHost && onAdminAction && <AdminPanel table={table} onAdminAction={onAdminAction} onClose={()=>setAdminOpen(false)} />}
 
       {/* TOP BAR */}
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"6px 10px",background:"rgba(15,23,42,0.95)",borderBottom:"1px solid rgba(255,255,255,0.06)",flexShrink:0}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"6px 10px",background:"rgba(15,23,42,0.98)",borderBottom:"1px solid rgba(255,255,255,0.06)",flexShrink:0,position:"relative",zIndex:300}}>
         <div>
           <span style={{fontWeight:700,color:"#e2e8f0",fontSize:13}}>{table.name}</span>
           <span style={{fontSize:10,color:"#64748b",marginLeft:8,fontFamily:"monospace"}}>{displayAmount(table.sb)}/{displayAmount(table.bb)}</span>
@@ -1166,7 +1166,7 @@ function HomePage({ onPractice, onRoom, onCash, lobby, connected }: { onPractice
 
       {/* Buy-in modal */}
       {buyInTable&&(
-        <div onClick={()=>setBuyInTable(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:100,padding:0}}>
+        <div onClick={()=>setBuyInTable(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:400,padding:0}}>
           <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:480,background:"#0f172a",border:"1px solid rgba(255,255,255,0.08)",borderRadius:"20px 20px 0 0",padding:24}}>
             <h2 style={{margin:"0 0 4px",fontSize:18,fontWeight:800,color:"#f1f5f9"}}>BUY IN — {buyInTable.name}</h2>
             {buyInTable.id==="table6"?(
@@ -1391,7 +1391,7 @@ export default function App() {
 
       {/* Seat selection confirm modal */}
       {selectedSeat !== null && !table?.you && (
-        <div onClick={()=>setSelectedSeat(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:100}}>
+        <div onClick={()=>setSelectedSeat(null)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:400}}>
           <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:440,background:"#0f172a",border:"1px solid rgba(255,255,255,0.08)",borderRadius:"20px 20px 0 0",padding:24}}>
             <h2 style={{margin:"0 0 4px",fontSize:18,fontWeight:800,color:"#f1f5f9"}}>🪑 Sit at Seat {selectedSeat + 1}</h2>
             <p style={{margin:"0 0 14px",color:"#64748b",fontSize:13}}>Choose your starting stack</p>
@@ -1456,7 +1456,7 @@ export default function App() {
         </div>
       )}
       {showRebuy && table && (
-        <div onClick={()=>setShowRebuy(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:100}}>
+        <div onClick={()=>setShowRebuy(false)} style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.75)",display:"flex",alignItems:"flex-end",justifyContent:"center",zIndex:400}}>
           <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:440,background:"#0f172a",border:"1px solid rgba(255,255,255,0.08)",borderRadius:"20px 20px 0 0",padding:24}}>
             <h2 style={{margin:"0 0 4px",fontSize:18,fontWeight:800,color:"#f1f5f9"}}>💸 Rebuy</h2>
             {(()=>{
