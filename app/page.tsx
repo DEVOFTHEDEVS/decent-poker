@@ -234,7 +234,7 @@ function useWS(url: string, onMessage?: (m: any) => void) {
         try {
           const m = JSON.parse(e.data);
           if (onMessage) onMessage(m);
-          if (m.type==="lobby") setLobby(m.tables);
+          if (m.type==="lobby") { setLobby(m.tables||[]); if(m.wasHost){setIsHost(false);if(typeof sessionStorage!=="undefined")sessionStorage.removeItem("is_host");if(typeof localStorage!=="undefined")localStorage.removeItem("is_host");} }
           else if (m.type==="state"||m.type==="joined") {
             setTable({...m.table});
             if (m.table?.you && typeof sessionStorage!=="undefined") {
@@ -271,6 +271,11 @@ function useWS(url: string, onMessage?: (m: any) => void) {
               setError(m.message);
             }
             s.send(JSON.stringify({type:"lobby"}));
+          }
+          else if (m.type==="admin_granted") {
+            setIsHost(true);
+            if (typeof sessionStorage!=="undefined") sessionStorage.setItem("is_host","1");
+            if (typeof localStorage!=="undefined") localStorage.setItem("is_host","1");
           }
           else if (m.type==="kicked") {
             // Save currency before clearing table state
@@ -484,7 +489,7 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy, onPause,
   const [chatText, setChatText] = useState("");
   const [chatOpen, setChatOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"chat"|"ledger">("chat");
-  const [handHistory, setHandHistory] = useState<{winners:{name:string;amount:number;hand:string}[];street:string}[]>(()=>{
+  const [handHistory, setHandHistory] = useState<{winners:{name:string;amount:number;hand:string}[];street:string;board?:string}[]>(()=>{
     try {
       const saved = typeof localStorage!=="undefined" ? localStorage.getItem("hand_history") : null;
       return saved ? JSON.parse(saved) : [];
@@ -682,8 +687,8 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy, onPause,
 
 
 
-      {/* ACTION PANEL - fixed bottom right, responsive */}
-      <div style={{position:"fixed",bottom:0,right:0,zIndex:100,width:"min(340px,100vw)",background:"rgba(10,10,20,0.97)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:"14px 14px 0 0",padding:"10px 12px 16px",boxShadow:"0 -4px 32px rgba(0,0,0,0.7)",backdropFilter:"blur(8px)"}}>
+      {/* ACTION PANEL - full width on mobile, right corner on desktop */}
+      <div style={{position:"fixed",bottom:0,right:0,zIndex:100,width:"100%",maxWidth:400,background:"rgba(8,8,18,0.98)",border:"1px solid rgba(255,255,255,0.1)",borderTop:"1px solid rgba(255,255,255,0.12)",borderRadius:"0",padding:"8px 10px 12px",boxShadow:"0 -4px 32px rgba(0,0,0,0.8)"}}>
         {(table as any).gamePaused && (
           <div style={{textAlign:"center",padding:"10px",background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.3)",borderRadius:8,color:"#fca5a5",fontWeight:700,fontSize:13,marginBottom:4}}>
             ⏸ Game paused by host
@@ -692,12 +697,12 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy, onPause,
         {you?.myTurn && !you.allIn ? (
           <div style={{display:"flex",flexDirection:"column",gap:5}}>
             {/* Timer bar */}
-            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2}}>
+            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
               <span style={{fontSize:10,color:"#f59e0b",fontWeight:700,letterSpacing:1}}>● YOUR TURN</span>
-              <div style={{flex:1,height:2,background:"rgba(255,255,255,0.07)",borderRadius:2,overflow:"hidden"}}>
+              <div style={{flex:1,height:3,background:"rgba(255,255,255,0.07)",borderRadius:2,overflow:"hidden"}}>
                 <div style={{height:"100%",width:`${(timeLeft/20)*100}%`,background:timeLeft>8?"#f59e0b":timeLeft>4?"#f97316":"#ef4444",transition:"width 0.2s linear"}}/>
               </div>
-              <span style={{fontSize:10,fontFamily:"monospace",color:timeLeft<=4?"#ef4444":"#64748b",fontWeight:700}}>{timeLeft}s</span>
+              <span style={{fontSize:11,fontFamily:"monospace",color:timeLeft<=4?"#ef4444":"#64748b",fontWeight:700}}>{timeLeft}s</span>
             </div>
             {/* Main action buttons - horizontal row like PokerNow */}
             <div style={{display:"flex",gap:6}}>
@@ -734,12 +739,10 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy, onPause,
             {/* Raise slider */}
             {canRaise&&(
               <div id="raise-slider" style={{display:"flex",flexDirection:"column",gap:4,marginTop:2}}>
-                <div style={{display:"flex",gap:3}}>
-                  {presets.map(p=><button key={p.l} onClick={()=>setRaiseAmt(p.v)} style={{flex:1,padding:"3px 0",borderRadius:5,fontSize:10,fontWeight:600,cursor:"pointer",border:raiseAmt===p.v?"1px solid #f59e0b":"1px solid rgba(255,255,255,0.08)",background:raiseAmt===p.v?"rgba(245,158,11,0.2)":"transparent",color:raiseAmt===p.v?"#f59e0b":"#64748b"}}>{p.l}</button>)}
+                <div style={{display:"flex",gap:3,marginBottom:2}}>
+                  {presets.map(p=><button key={p.l} onClick={()=>setRaiseAmt(p.v)} style={{flex:1,padding:"2px 0",borderRadius:4,fontSize:10,fontWeight:600,cursor:"pointer",border:raiseAmt===p.v?"1px solid #f59e0b":"1px solid rgba(255,255,255,0.08)",background:raiseAmt===p.v?"rgba(245,158,11,0.2)":"transparent",color:raiseAmt===p.v?"#f59e0b":"#64748b"}}>{p.l}</button>)}
                 </div>
-                <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                  <input type="range" min={rMin} max={rMax} step={Math.max(1,Math.floor(bb/2))} value={raiseAmt} onChange={e=>setRaiseAmt(+e.target.value)} style={{flex:1,accentColor:"#f59e0b"}}/>
-                </div>
+                <input type="range" min={rMin} max={rMax} step={Math.max(1,Math.floor(bb/2))} value={raiseAmt} onChange={e=>setRaiseAmt(+e.target.value)} style={{width:"100%",accentColor:"#f59e0b",marginBottom:4}}/>
                 <div style={{display:"flex",gap:6,alignItems:"center"}}>
                   <input type="number" value={displayAmountRaw(raiseAmt)} onChange={e=>{
                     const cur = _currentCurrency;
@@ -880,7 +883,8 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy, onPause,
                             <span style={{color:"#22c55e",fontFamily:"monospace",fontWeight:700}}>+{displayAmount(w.amount)}</span>
                           </div>
                         ))}
-                        {h.winners[0]?.hand&&h.winners[0].hand!=="win"&&<div style={{fontSize:10,color:"#64748b",fontStyle:"italic"}}>{h.winners[0].hand}</div>}
+                        {h.winners[0]?.hand&&<div style={{fontSize:10,color:"#a78bfa",fontWeight:600}}>🂠 {h.winners[0].hand}</div>}
+                        {h.board&&<div style={{fontSize:9,color:"#475569",fontFamily:"monospace"}}>{h.board}</div>}
                       </div>
                     ))}
                   </div>
