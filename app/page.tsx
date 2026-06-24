@@ -119,8 +119,8 @@ function SeatPod({ seat, isMe, isWinner, winCards, pos, small }: { seat: Seat; i
       {seat.bet>0&&<div style={{display:"flex",gap:1,marginBottom:1}}>{Array.from({length:Math.min(4,Math.max(1,Math.ceil(seat.bet/20000000)))}).map((_,i)=><div key={i} style={{width:7,height:7,borderRadius:"50%",background:"linear-gradient(#facc15,#ca8a04)"}}/>)}</div>}
       {showAction&&<div style={{padding:"1px 5px",borderRadius:3,background:aC[seat.lastAction!.label]||"#374151",color:"#fff",fontSize:8,fontWeight:700}}>{seat.lastAction!.label}</div>}
       <div style={{display:"flex",gap:2}}>
-        {seat.cards==="back"?<><PlayingCard card="back" small={true}/><PlayingCard card="back" small={true}/></>:
-         Array.isArray(seat.cards)?seat.cards.map((c,i)=><PlayingCard key={i} card={c} small={true} highlight={winCards?.has(c.r+c.s)}/>):
+        {seat.cards==="back"?<><PlayingCard card="back" small={!isMe}/><PlayingCard card="back" small={!isMe}/></>:
+         Array.isArray(seat.cards)?seat.cards.map((c,i)=><PlayingCard key={i} card={c} small={!isMe} highlight={winCards?.has(c.r+c.s)}/>):
          <><div style={{width:cardW,height:cardH,borderRadius:5,border:"1px solid rgba(255,255,255,0.06)"}}/><div style={{width:cardW,height:cardH,borderRadius:5,border:"1px solid rgba(255,255,255,0.06)"}}/></>}
       </div>
       <div style={{display:"flex",alignItems:"center",gap:4,padding:"3px 6px",borderRadius:6,background:seat.isTurn?"#1e1b4b":isWinner?"#052e16":isMe?"#1e293b":"rgba(15,23,42,0.9)",border:`1.5px solid ${seat.isTurn?"#818cf8":isWinner?"#34d399":isMe?"#475569":"rgba(255,255,255,0.08)"}`,boxShadow:seat.isTurn?"0 0 10px rgba(129,140,248,0.4)":isWinner?"0 0 10px rgba(52,211,153,0.4)":"none"}}>
@@ -664,12 +664,7 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy, onPause,
         </div>
       </div>
 
-      {/* MY HOLE CARDS — shown below felt */}
-      {you && Array.isArray(table.seats[myIndex]?.cards) && (
-        <div style={{display:"flex",justifyContent:"center",gap:6,padding:"4px 0",flexShrink:0,background:"rgba(15,23,42,0.5)"}}>
-          {(table.seats[myIndex]!.cards as Card[]).map((c,i)=><PlayingCard key={i} card={c} highlight={winCards?.has(c.r+c.s)}/>)}
-        </div>
-      )}
+
 
       {/* ACTION PANEL */}
       <div style={{padding:"8px 10px",background:"rgba(15,23,42,0.98)",borderTop:"1px solid rgba(255,255,255,0.07)",flexShrink:0}}>
