@@ -743,9 +743,13 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy, onPause,
                 <div style={{display:"flex",gap:6,alignItems:"center"}}>
                   <input type="number" value={displayAmountRaw(raiseAmt)} onChange={e=>{
                     const cur = _currentCurrency;
-                    const raw = parseFloat(e.target.value)||0;
-                    const lam = cur==="usd"?Math.round(raw*100):cur==="sol"?Math.round(raw*1e9):Math.round(raw);
-                    const clamped = Math.max(rMin,Math.min(rMax,lam));
+                    const raw = parseFloat(e.target.value);
+                    if (isNaN(raw) || raw < 0) return; // ignore invalid input
+                    // Cap raw input before converting to prevent overflow
+                    const capped = Math.min(raw, cur==="usd" ? 1000000 : cur==="sol" ? 1000 : 1_000_000_000);
+                    const lam = cur==="usd" ? Math.round(capped*100) : cur==="sol" ? Math.round(capped*1e9) : Math.round(capped);
+                    // Always clamp to valid raise range
+                    const clamped = Math.max(rMin, Math.min(rMax, lam));
                     setRaiseAmt(clamped);
                   }} placeholder="Custom amount" style={{flex:1,background:"rgba(30,41,59,0.8)",border:"1px solid rgba(245,158,11,0.3)",borderRadius:7,padding:"7px 10px",fontSize:13,color:"#f59e0b",outline:"none",fontFamily:"monospace"}}/>
                   <button onClick={()=>onAct({type:raiseAmt>=rMax?"allin":"raise",amount:raiseAmt})}
