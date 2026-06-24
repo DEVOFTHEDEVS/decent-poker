@@ -178,3 +178,20 @@ button { -webkit-tap-highlight-color: transparent; user-select: none; }
     padding-bottom: 170px; /* reserve space so cards show above action panel */
   }
 }
+
+/* Mobile: compact action buttons so cards are visible */
+@media (max-width: 600px) {
+  .action-panel {
+    padding: 5px 8px 10px !important;
+  }
+  .btn-call, .btn-raise, .btn-check, .btn-allin, .btn-fold {
+    padding: 6px 2px !important;
+    font-size: 11px !important;
+    letter-spacing: 0 !important;
+    border-width: 1.5px !important;
+    border-radius: 6px !important;
+  }
+  .btn-call span, .btn-raise span, .btn-allin span {
+    font-size: 10px !important;
+  }
+}

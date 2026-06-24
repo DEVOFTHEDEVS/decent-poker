@@ -703,8 +703,8 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy, onPause,
         {you?.myTurn && !you.allIn ? (
           <div style={{display:"flex",flexDirection:"column",gap:5}}>
             {/* Timer bar */}
-            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
-              <span style={{fontSize:10,color:"#f59e0b",fontWeight:700,letterSpacing:1}}>● YOUR TURN</span>
+            <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:2}}>
+              <span style={{fontSize:9,color:"#f59e0b",fontWeight:700,letterSpacing:0}}>● YOUR TURN</span>
               <div style={{flex:1,height:3,background:"rgba(255,255,255,0.07)",borderRadius:2,overflow:"hidden"}}>
                 <div style={{height:"100%",width:`${(timeLeft/20)*100}%`,background:timeLeft>8?"#f59e0b":timeLeft>4?"#f97316":"#ef4444",transition:"width 0.2s linear"}}/>
               </div>
@@ -742,7 +742,6 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy, onPause,
                 FOLD
               </button>
             </div>
-            {/* Raise slider - hidden until RAISE tapped, toggled via raiseOpen */}
             {canRaise&&(
               <div id="raise-slider" style={{display:"flex",flexDirection:"column",gap:4,marginTop:2}}>
                 <div style={{display:"flex",gap:3,marginBottom:2}}>
