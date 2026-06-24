@@ -195,3 +195,18 @@ button { -webkit-tap-highlight-color: transparent; user-select: none; }
     font-size: 10px !important;
   }
 }
+
+/* Mobile: shrink table felt so cards + buttons both visible */
+@media (max-width: 600px) {
+  .felt-area {
+    padding-bottom: 140px !important;
+    max-height: calc(100dvh - 140px - 44px) !important; /* 44px = top bar */
+  }
+}
+
+/* Mobile: smaller oval table */
+@media (max-width: 600px) {
+  .table-oval {
+    inset: 4% 4% 14% 4% !important; /* smaller bottom gap - seat hangs over bottom */
+  }
+}

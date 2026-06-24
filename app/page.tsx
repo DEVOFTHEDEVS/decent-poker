@@ -649,7 +649,7 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy, onPause,
       {/* FELT */}
       <div className="felt-area" style={{position:"relative",flex:"1 1 0",minHeight:0,overflow:"visible"}}>
         {/* Oval background */}
-        <div style={{position:"absolute",inset:"8% 6%",borderRadius:"45%",background:"radial-gradient(ellipse at 50% 40%,#166534,#14532d,#052e16)",border:"8px solid rgba(120,53,15,0.5)",boxShadow:"inset 0 0 40px rgba(0,0,0,0.5), 0 0 60px rgba(0,0,0,0.6)",overflow:"visible"}}>
+        <div className="table-oval" style={{position:"absolute",inset:"8% 6%",borderRadius:"45%",background:"radial-gradient(ellipse at 50% 40%,#166534,#14532d,#052e16)",border:"8px solid rgba(120,53,15,0.5)",boxShadow:"inset 0 0 40px rgba(0,0,0,0.5), 0 0 60px rgba(0,0,0,0.6)",overflow:"visible"}}>
           {/* Center content */}
           <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,pointerEvents:"none",zIndex:2}}>
             {table.handActive&&table.street&&<div style={{padding:"1px 8px",background:"rgba(0,0,0,0.35)",borderRadius:12,color:"rgba(134,239,172,0.7)",fontSize:9,fontFamily:"monospace",letterSpacing:3}}>{table.street.toUpperCase()}</div>}
