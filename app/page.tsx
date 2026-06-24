@@ -234,7 +234,7 @@ function useWS(url: string, onMessage?: (m: any) => void) {
         try {
           const m = JSON.parse(e.data);
           if (onMessage) onMessage(m);
-          if (m.type==="lobby") { setLobby(m.tables||[]); if(m.wasHost){setIsHost(false);if(typeof sessionStorage!=="undefined")sessionStorage.removeItem("is_host");if(typeof localStorage!=="undefined")localStorage.removeItem("is_host");} }
+          if (m.type==="lobby") { setLobby(m.tables||[]); }
           else if (m.type==="state"||m.type==="joined") {
             setTable({...m.table});
             if (m.table?.you && typeof sessionStorage!=="undefined") {
@@ -1246,6 +1246,10 @@ export default function App() {
     } else if ((m.type === "joined" || m.type === "state") && m.isHost === false) {
       setIsHost(false);
       if (typeof sessionStorage!=="undefined") sessionStorage.removeItem("is_host");
+    } else if (m.type === "lobby" && m.wasHost) {
+      setIsHost(false);
+      if (typeof sessionStorage!=="undefined") sessionStorage.removeItem("is_host");
+      if (typeof localStorage!=="undefined") localStorage.removeItem("is_host");
     }
   });
   const [view, setView] = useState<"home"|"table">("home");
