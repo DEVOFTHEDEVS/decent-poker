@@ -123,14 +123,14 @@ function SeatPod({ seat, isMe, isWinner, winCards, pos, small }: { seat: Seat; i
          Array.isArray(seat.cards)?seat.cards.map((c,i)=><PlayingCard key={i} card={c} small={!isMe} highlight={winCards?.has(c.r+c.s)}/>):
          <><div style={{width:cardW,height:cardH,borderRadius:5,border:"1px solid rgba(255,255,255,0.06)"}}/><div style={{width:cardW,height:cardH,borderRadius:5,border:"1px solid rgba(255,255,255,0.06)"}}/></>}
       </div>
-      <div style={{display:"flex",alignItems:"center",gap:4,padding:"3px 6px",borderRadius:6,background:seat.isTurn?"#1e1b4b":isWinner?"#052e16":isMe?"#1e293b":"rgba(15,23,42,0.9)",border:`1.5px solid ${seat.isTurn?"#818cf8":isWinner?"#34d399":isMe?"#475569":"rgba(255,255,255,0.08)"}`,boxShadow:seat.isTurn?"0 0 10px rgba(129,140,248,0.4)":isWinner?"0 0 10px rgba(52,211,153,0.4)":"none"}}>
-        <div style={{width:18,height:18,borderRadius:"50%",background:isMe?"#3730a3":"#334155",display:"flex",alignItems:"center",justifyContent:"center",fontSize:8,fontWeight:700,flexShrink:0,position:"relative"}}>
+      <div style={{display:"flex",alignItems:"center",gap:5,padding:"5px 8px",borderRadius:8,background:seat.isTurn?"#1e1b4b":isWinner?"#052e16":isMe?"#1e293b":"rgba(15,23,42,0.92)",border:`2px solid ${seat.isTurn?"#818cf8":isWinner?"#34d399":isMe?"#6366f1":"rgba(255,255,255,0.12)"}`,boxShadow:seat.isTurn?"0 0 14px rgba(129,140,248,0.6)":isWinner?"0 0 14px rgba(52,211,153,0.6)":"none",minWidth:80}}>
+        <div style={{width:24,height:24,borderRadius:"50%",background:isMe?"#4338ca":"#334155",display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:800,flexShrink:0,position:"relative",color:"#fff"}}>
           {(seat.name||"?")[0].toUpperCase()}
-          {seat.isButton&&<span style={{position:"absolute",bottom:-3,right:-3,width:11,height:11,borderRadius:"50%",background:"#facc15",color:"#713f12",fontSize:6,fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center"}}>D</span>}
+          {seat.isButton&&<span style={{position:"absolute",bottom:-3,right:-3,width:13,height:13,borderRadius:"50%",background:"#facc15",color:"#713f12",fontSize:7,fontWeight:900,display:"flex",alignItems:"center",justifyContent:"center"}}>D</span>}
         </div>
         <div>
-          <div style={{fontSize:9,fontWeight:600,color:isMe?"#a5b4fc":"#e2e8f0",maxWidth:48,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{seat.name}{seat.isBot&&<span style={{color:"#475569",marginLeft:2}}>·bot</span>}</div>
-          <div style={{fontSize:8,color:"#fde68a",fontFamily:"monospace"}}>{displayAmount(seat.chips)}</div>
+          <div style={{fontSize:13,fontWeight:800,color:isMe?"#c7d2fe":"#ffffff",maxWidth:80,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{seat.name}{seat.isBot&&<span style={{color:"#64748b",marginLeft:2,fontSize:10}}>·bot</span>}</div>
+          <div style={{fontSize:13,color:"#facc15",fontFamily:"monospace",fontWeight:700}}>{displayAmount(seat.chips)}</div>
         </div>
       </div>
       {seat.allIn&&<span style={{fontSize:7,padding:"1px 4px",background:"rgba(249,115,22,0.2)",color:"#fb923c",borderRadius:3,fontWeight:700}}>ALL-IN</span>}
