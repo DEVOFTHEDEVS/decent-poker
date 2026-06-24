@@ -666,8 +666,8 @@ function TableView({ table, onAct, onChat, onLeave, onSitDown, onRebuy, onPause,
 
 
 
-      {/* ACTION PANEL */}
-      <div style={{padding:"8px 10px",background:"rgba(15,23,42,0.98)",borderTop:"1px solid rgba(255,255,255,0.07)",flexShrink:0}}>
+      {/* ACTION PANEL - fixed bottom right */}
+      <div style={{position:"fixed",bottom:16,right:16,zIndex:100,width:320,background:"rgba(10,10,20,0.97)",border:"1px solid rgba(255,255,255,0.12)",borderRadius:14,padding:"12px",boxShadow:"0 8px 32px rgba(0,0,0,0.7)",backdropFilter:"blur(8px)"}}>
         {(table as any).gamePaused && (
           <div style={{textAlign:"center",padding:"10px",background:"rgba(239,68,68,0.1)",border:"1px solid rgba(239,68,68,0.3)",borderRadius:8,color:"#fca5a5",fontWeight:700,fontSize:13,marginBottom:4}}>
             ⏸ Game paused by host

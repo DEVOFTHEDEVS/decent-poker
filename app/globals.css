@@ -22,9 +22,9 @@
 
 /* Action button hover/active states */
 .btn-call {
-  flex: 1; padding: 8px 0; background: transparent;
+  flex: 1; padding: 10px 0; background: transparent;
   border: 2px solid #22c55e; border-radius: 8px;
-  color: #22c55e; font-weight: 800; font-size: 12px;
+  color: #22c55e; font-weight: 800; font-size: 13px;
   cursor: pointer; letter-spacing: 0.5px;
   transition: background 0.12s, box-shadow 0.12s, transform 0.1s;
 }
@@ -32,9 +32,9 @@
 .btn-call:active { background: rgba(34,197,94,0.32); box-shadow: 0 0 26px rgba(34,197,94,0.8); transform: translateY(0); }
 
 .btn-raise {
-  flex: 1; padding: 8px 0; background: transparent;
+  flex: 1; padding: 10px 0; background: transparent;
   border: 2px solid #f59e0b; border-radius: 8px;
-  color: #f59e0b; font-weight: 800; font-size: 12px;
+  color: #f59e0b; font-weight: 800; font-size: 13px;
   cursor: pointer; letter-spacing: 0.5px;
   transition: background 0.12s, box-shadow 0.12s, transform 0.1s;
 }
@@ -42,9 +42,9 @@
 .btn-raise:active { background: rgba(245,158,11,0.32); box-shadow: 0 0 26px rgba(245,158,11,0.8); transform: translateY(0); }
 
 .btn-check {
-  flex: 1; padding: 8px 0; background: transparent;
+  flex: 1; padding: 10px 0; background: transparent;
   border: 2px solid #64748b; border-radius: 8px;
-  color: #94a3b8; font-weight: 800; font-size: 12px;
+  color: #94a3b8; font-weight: 800; font-size: 13px;
   cursor: pointer; letter-spacing: 0.5px;
   transition: background 0.12s, box-shadow 0.12s, transform 0.1s, color 0.12s;
 }
@@ -52,9 +52,9 @@
 .btn-check:active { background: rgba(100,116,139,0.32); color: #f1f5f9; box-shadow: 0 0 26px rgba(100,116,139,0.7); transform: translateY(0); }
 
 .btn-allin {
-  flex: 1; padding: 8px 0; background: transparent;
+  flex: 1; padding: 10px 0; background: transparent;
   border: 2px solid #f97316; border-radius: 8px;
-  color: #f97316; font-weight: 800; font-size: 12px;
+  color: #f97316; font-weight: 800; font-size: 13px;
   cursor: pointer; letter-spacing: 0.5px;
   transition: background 0.12s, box-shadow 0.12s, transform 0.1s;
 }
@@ -62,9 +62,9 @@
 .btn-allin:active { background: rgba(249,115,22,0.32); box-shadow: 0 0 26px rgba(249,115,22,0.8); transform: translateY(0); }
 
 .btn-fold {
-  flex: 1; padding: 8px 0; background: transparent;
+  flex: 1; padding: 10px 0; background: transparent;
   border: 2px solid #ef4444; border-radius: 8px;
-  color: #ef4444; font-weight: 800; font-size: 12px;
+  color: #ef4444; font-weight: 800; font-size: 13px;
   cursor: pointer; letter-spacing: 0.5px;
   transition: background 0.12s, box-shadow 0.12s, transform 0.1s;
 }
