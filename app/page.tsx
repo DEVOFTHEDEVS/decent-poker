@@ -400,6 +400,22 @@ function AdminPanel({ table, onAdminAction, onClose }: {
 
         {tab==="game" && (
           <div style={{display:"flex",flexDirection:"column",gap:12}}>
+            {/* Invite Link */}
+            {(()=>{
+              const rid = typeof sessionStorage!=="undefined" ? sessionStorage.getItem("last_room_id") : null;
+              if (!rid) return null;
+              const link = `${window.location.origin}/table/${rid}`;
+              return (
+                <div style={{background:"rgba(30,41,59,0.6)",borderRadius:10,padding:12}}>
+                  <div style={{fontSize:11,color:"#64748b",fontWeight:600,marginBottom:8,letterSpacing:1}}>INVITE LINK</div>
+                  <div style={{fontSize:12,color:"#a5b4fc",wordBreak:"break-all",marginBottom:8,padding:"6px 10px",background:"rgba(15,23,42,0.6)",borderRadius:6,fontFamily:"monospace"}}>{link}</div>
+                  <button onClick={()=>navigator.clipboard.writeText(link).then(()=>alert("Link copied!"))}
+                    style={{width:"100%",padding:"8px 0",background:"rgba(99,102,241,0.2)",border:"1px solid rgba(99,102,241,0.4)",borderRadius:8,color:"#a5b4fc",fontWeight:700,fontSize:12,cursor:"pointer"}}>
+                    📋 COPY LINK
+                  </button>
+                </div>
+              );
+            })()}
             {/* Pause/Resume */}
             <div style={{background:"rgba(30,41,59,0.6)",borderRadius:10,padding:12}}>
               <div style={{fontSize:11,color:"#64748b",fontWeight:600,marginBottom:8,letterSpacing:1}}>GAME STATUS</div>
@@ -1345,11 +1361,11 @@ export default function App() {
           <div onClick={e=>e.stopPropagation()} style={{width:"100%",maxWidth:440,background:"#0f172a",border:"1px solid rgba(255,255,255,0.08)",borderRadius:"20px 20px 0 0",padding:24}}>
             <h2 style={{margin:"0 0 4px",fontSize:18,fontWeight:800,color:"#f1f5f9"}}>💸 Rebuy</h2>
             {(()=>{
-              const cur = typeof sessionStorage!=="undefined" ? sessionStorage.getItem("table_currency")||"chips" : "chips";
+              const cur = _currentCurrency || "chips";
               const isUSD = cur==="usd"; const isSOL = cur==="sol";
               const presets = isUSD ? ["10","20","50","100","200"] : isSOL ? ["0.5","1","2","5"] : ["500","1000","2000","5000"];
-              const unit = isUSD ? "USD" : isSOL ? "SOL" : "chips";
-              const prefix = isUSD ? "$" : "";
+              const unit = isUSD ? "USD ($)" : isSOL ? "SOL (◎)" : "chips";
+              const prefix = isUSD ? "$" : isSOL ? "◎" : "";
               return (<>
                 <p style={{margin:"0 0 10px",color:"#64748b",fontSize:13}}>Add {unit} to stay in the game</p>
                 <div style={{display:"flex",gap:6,marginBottom:10,flexWrap:"wrap"}}>
