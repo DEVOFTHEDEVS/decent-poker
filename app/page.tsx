@@ -290,7 +290,6 @@ function useWS(url: string, onMessage?: (m: any) => void) {
           else if (m.type==="spectating") {
             // Show table as spectator - user will click a seat to join
             setTable({...m.table});
-            setView("table");
             if (typeof sessionStorage!=="undefined") {
               if (m.currency) setCurrencyCache(m.currency);
               if (m.roomId) {
@@ -1261,6 +1260,8 @@ export default function App() {
       setIsHost(true);
       if (typeof sessionStorage!=="undefined") sessionStorage.setItem("is_host","1");
       if (typeof localStorage!=="undefined") localStorage.setItem("is_host","1");
+    } else if (m.type === "spectating") {
+      setView("table");
     }
   });
   const [view, setView] = useState<"home"|"table">("home");
